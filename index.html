@@ -46,13 +46,13 @@ h1 { font-size:24px; line-height:1.15; margin:0; letter-spacing:-.5px; }
 .positive { color:var(--green)!important; }
 .negative { color:var(--red)!important; }
 .card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:17px; box-shadow:var(--shadow); }
-.behaviors { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-.behavior { border:1px solid var(--border); border-radius:15px; background:var(--surface); color:var(--text); min-height:105px; padding:13px 12px; text-align:left; display:flex; flex-direction:column; justify-content:space-between; gap:12px; transition:transform .12s ease,border-color .12s ease; }
+.behaviors { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.behavior { border:1px solid var(--border); border-radius:15px; background:var(--surface); color:var(--text); min-width:0; min-height:105px; padding:11px 9px; text-align:left; display:flex; flex-direction:column; justify-content:space-between; gap:12px; transition:transform .12s ease,border-color .12s ease; }
 .behavior:active { transform:scale(.98); }
-.behavior .b-name { font-size:14px; line-height:1.4; font-weight:650; }
-.behavior .b-bottom { display:flex; align-items:center; justify-content:space-between; }
+.behavior .b-name { font-size:13px; line-height:1.4; font-weight:650; overflow-wrap:anywhere; }
+.behavior .b-bottom { display:flex; align-items:center; justify-content:space-between; gap:4px; }
 .behavior .b-icon { font-size:18px; color:var(--muted); }
-.points { font-size:19px; font-weight:750; }
+.points { font-size:17px; font-weight:750; }
 .behavior.plus .points { color:var(--green); }
 .behavior.minus .points { color:var(--red); }
 .custom-row { display:flex; gap:8px; margin-top:10px; }
@@ -85,7 +85,8 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
 .bottom-note { text-align:center;color:var(--muted);font-size:11px;margin-top:16px;line-height:1.6; }
 .modal-backdrop { position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;justify-content:center;padding:12px;z-index:10; }
 .modal-backdrop.show { display:flex; }
-.modal { width:min(100%,480px);background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:20px;box-shadow:0 18px 60px #0003; }
+.modal { width:min(100%,480px);max-height:calc(100dvh - 24px);display:flex;flex-direction:column;min-height:0;background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:20px;box-shadow:0 18px 60px #0003; }
+#modalBody { min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
 .modal h3 { margin:0 0 16px;font-size:18px; }
 .field { display:flex;flex-direction:column;gap:7px;margin:12px 0; }
 .field label { font-size:12px;color:var(--muted); }
@@ -94,8 +95,8 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
 .modal-actions .primary { background:var(--blue);color:#fff;border-color:var(--blue); }
 .toast { position:fixed;left:50%;bottom:25px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--text);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:13px;transition:.2s;z-index:20;white-space:nowrap; }
 .toast.show { opacity:1;transform:translate(-50%,0); }
-@media(min-width:620px) { .app{padding:34px 24px 50px}.behaviors{grid-template-columns:repeat(3,minmax(0,1fr))}.behavior{min-height:112px}.modal-backdrop{align-items:center} }
-@media(max-width:360px) { .child-card .balance{font-size:27px}.card{padding:13px}.behavior{padding:11px;min-height:98px} }
+@media(min-width:620px) { .app{padding:34px 24px 50px}.behavior{min-height:112px;padding:13px 12px}.behavior .b-name{font-size:14px}.points{font-size:19px}.modal-backdrop{align-items:center}.modal{max-height:calc(100dvh - 48px)} }
+@media(max-width:360px) { .child-card .balance{font-size:27px}.card{padding:13px}.behaviors{gap:6px}.behavior{padding:9px 7px;min-height:94px;border-radius:12px}.behavior .b-name{font-size:12px}.behavior .b-icon{font-size:16px}.points{font-size:15px} }
 </style>
 </head>
 <body>
@@ -241,7 +242,7 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
       $('modalBody').innerHTML='<div class="field"><label>行为名称</label><input id="fName" placeholder="例如：主动阅读" maxlength="40"></div><div class="field"><label>积分变化（正数加分，负数扣分）</label><input id="fDelta" type="number" value="1" min="-100" max="100"></div>';
     } else {
       $('modalTitle').textContent='数据与规则设置';
-      $('modalBody').innerHTML='<p style="font-size:13px;color:var(--muted);line-height:1.7">数据仅保存在当前浏览器，不会自动同步。CSV 可用 Mac Numbers 打开或编辑，也可在设备间手动转移。导入会替换当前设备中的全部数据，请先导出备份。</p><div class="field"><button class="secondary-btn" id="manageChildren">管理小朋友 / 修改名字</button></div><div class="field"><button class="secondary-btn" id="manageBehaviors">管理积分项（增删改、排序）</button></div><div class="field"><button class="secondary-btn" id="addBehavior">＋ 快速添加积分项</button></div><div class="field"><button class="secondary-btn" id="exportData">导出 CSV</button></div><div class="field"><button class="secondary-btn" id="importData">导入 CSV</button><input id="importFile" type="file" accept=".csv,text/csv" hidden></div><div class="field"><button class="secondary-btn" id="resetDemo" style="color:var(--red)">重置演示数据</button></div>';
+      $('modalBody').innerHTML='<p style="font-size:13px;color:var(--muted);line-height:1.7">数据仅保存在当前浏览器，不会自动同步。CSV 可用 Mac Numbers 打开或编辑，也可在设备间手动转移。iPhone 导入时可在文件选择器中点“浏览”进入 iCloud 云盘；已取消文件类型过滤，避免 iCloud 文件因类型标记不一致而被隐藏。导入会替换当前设备中的全部数据，请先导出备份。</p><div class="field"><button class="secondary-btn" id="manageChildren">管理小朋友 / 修改名字</button></div><div class="field"><button class="secondary-btn" id="manageBehaviors">管理积分项（增删改、排序）</button></div><div class="field"><button class="secondary-btn" id="addBehavior">＋ 快速添加积分项</button></div><div class="field"><button class="secondary-btn" id="exportData">导出 CSV</button></div><div class="field"><button class="secondary-btn" id="importData">导入 CSV</button><input id="importFile" type="file" hidden></div><div class="field"><button class="secondary-btn" id="resetDemo" style="color:var(--red)">重置演示数据</button></div>';
       setTimeout(()=>{const c=$('manageChildren');if(c)c.onclick=()=>openModal('manageChildren');const m=$('manageBehaviors');if(m)m.onclick=()=>openModal('manageBehaviors');const ab=$('addBehavior');if(ab)ab.onclick=()=>openModal('behavior');const e=$('exportData');if(e)e.onclick=exportData;const i=$('importData');if(i)i.onclick=()=>$('importFile').click();const f=$('importFile');if(f)f.onchange=importData;const r=$('resetDemo');if(r)r.onclick=()=>{if(confirm('确定清空当前记录并恢复示例数据？')){data=JSON.parse(JSON.stringify(initial));activeChild=data.children[0].id;save();closeModal();render();toast('已恢复示例数据');}};},0);
     }
     if(mode==='editChild'){const c=data.children.find(x=>x.id===editingId);$('modalTitle').textContent='修改小朋友';$('modalBody').innerHTML=`<div class="field"><label>小朋友名字</label><input id="fName" maxlength="24" value="${esc(c?.name||'')}"></div><div class="field"><label>初始积分</label><input id="fInitial" type="number" value="${Number(c?.initial)||0}"></div>`;}
