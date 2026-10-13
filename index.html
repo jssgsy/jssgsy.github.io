@@ -1,11 +1,286 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="zh-CN">
 <head>
-    <script>
-        window.location.href = "https://jssgsy.github.io/movie/";
-    </script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>家庭积分</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#f5f6f8,#111318);
+  --surface: light-dark(#ffffff,#1b1e25);
+  --surface-2: light-dark(#f0f2f5,#252933);
+  --text: light-dark(#1e2430,#f2f4f8);
+  --muted: light-dark(#727987,#a1a8b5);
+  --border: light-dark(#e3e6eb,#343945);
+  --green: light-dark(#168653,#5bd69a);
+  --green-bg: light-dark(#e9f8f0,#18372b);
+  --red: light-dark(#c74c4c,#ff8989);
+  --red-bg: light-dark(#fff0f0,#3a2225);
+  --blue: light-dark(#3569d4,#8eafff);
+  --blue-bg: light-dark(#edf3ff,#222f4c);
+  --shadow: 0 8px 26px light-dark(#1e293b0a,#00000020);
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif; }
+button,input,select { font:inherit; }
+button { cursor:pointer; }
+.app { min-height:100vh; background:var(--bg); padding:24px 16px 40px; }
+.shell { width:min(100%,720px); margin:0 auto; }
+.top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:20px; }
+.brand { display:flex; align-items:center; gap:11px; }
+.logo { width:42px;height:42px;border-radius:14px;background:var(--blue-bg);display:grid;place-items:center;font-size:22px; }
+h1 { font-size:24px; line-height:1.15; margin:0; letter-spacing:-.5px; }
+.subtitle { font-size:13px;color:var(--muted);margin-top:5px; }
+.icon-btn,.secondary-btn { border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:12px; padding:10px 13px; }
+.section { margin-top:18px; }
+.section-head { display:flex; justify-content:space-between; align-items:center; margin:0 2px 10px; gap:10px; }
+.section-head h2 { font-size:15px; margin:0; font-weight:700; }
+.section-head small { color:var(--muted); font-size:12px; }
+.children { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.child-card { border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:18px; padding:15px; text-align:left; box-shadow:var(--shadow); position:relative; }
+.child-card.active { border:2px solid var(--blue); padding:14px; }
+.child-card .name { font-size:14px; color:var(--muted); display:flex; justify-content:space-between; gap:8px; }
+.child-card .balance { font-size:31px; letter-spacing:-1px; font-weight:750; margin:7px 0 4px; }
+.child-card .foot { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); }
+.positive { color:var(--green)!important; }
+.negative { color:var(--red)!important; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:17px; box-shadow:var(--shadow); }
+.behaviors { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.behavior { border:1px solid var(--border); border-radius:15px; background:var(--surface); color:var(--text); min-height:105px; padding:13px 12px; text-align:left; display:flex; flex-direction:column; justify-content:space-between; gap:12px; transition:transform .12s ease,border-color .12s ease; }
+.behavior:active { transform:scale(.98); }
+.behavior .b-name { font-size:14px; line-height:1.4; font-weight:650; }
+.behavior .b-bottom { display:flex; align-items:center; justify-content:space-between; }
+.behavior .b-icon { font-size:18px; color:var(--muted); }
+.points { font-size:19px; font-weight:750; }
+.behavior.plus .points { color:var(--green); }
+.behavior.minus .points { color:var(--red); }
+.custom-row { display:flex; gap:8px; margin-top:10px; }
+.custom-row input { width:100%; min-width:0; }
+input,select { border:1px solid var(--border); border-radius:11px; background:var(--surface); color:var(--text); padding:10px 11px; }
+.custom-row button { border:0; border-radius:11px; background:var(--blue); color:white; padding:0 15px; font-weight:650; white-space:nowrap; }
+.tabs { display:flex; gap:7px; border-bottom:1px solid var(--border); margin-bottom:12px; }
+.tab { background:transparent; color:var(--muted); border:0; padding:10px 8px; font-size:13px; border-bottom:2px solid transparent; }
+.tab.active { color:var(--blue); border-color:var(--blue); font-weight:700; }
+.filter-row { display:flex; gap:8px; align-items:center; margin-bottom:12px; }
+.filter-row input { flex:1; min-width:0; }
+.log-list { display:flex; flex-direction:column; gap:0; }
+.log { display:flex; align-items:center; gap:11px; padding:13px 0; border-bottom:1px solid var(--border); }
+.log:last-child { border-bottom:0; }
+.log-mark { width:38px;height:38px;border-radius:13px;display:grid;place-items:center;font-size:17px;flex-shrink:0; }
+.log-mark.plus { background:var(--green-bg); }
+.log-mark.minus { background:var(--red-bg); }
+.log-main { flex:1; min-width:0; }
+.log-title { font-size:14px; font-weight:650; overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.log-meta { color:var(--muted); font-size:12px; margin-top:4px; }
+.log-right { text-align:right; flex-shrink:0; }
+.log-points { font-weight:750; font-size:16px; }
+.log-balance { color:var(--muted); font-size:11px; margin-top:4px; }
+.undo { margin-top:4px; border:0; background:transparent; color:var(--muted); font-size:11px; padding:3px; }
+.stats { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px; }
+.stat { border-radius:13px;background:var(--surface-2);padding:11px; }
+.stat label { display:block;color:var(--muted);font-size:11px;margin-bottom:7px; }
+.stat strong { font-size:17px; }
+.empty { text-align:center;color:var(--muted);font-size:13px;padding:28px 8px; }
+.bottom-note { text-align:center;color:var(--muted);font-size:11px;margin-top:16px;line-height:1.6; }
+.modal-backdrop { position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;justify-content:center;padding:12px;z-index:10; }
+.modal-backdrop.show { display:flex; }
+.modal { width:min(100%,480px);background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:20px;box-shadow:0 18px 60px #0003; }
+.modal h3 { margin:0 0 16px;font-size:18px; }
+.field { display:flex;flex-direction:column;gap:7px;margin:12px 0; }
+.field label { font-size:12px;color:var(--muted); }
+.modal-actions { display:flex;gap:8px;margin-top:18px; }
+.modal-actions button { flex:1;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text); }
+.modal-actions .primary { background:var(--blue);color:#fff;border-color:var(--blue); }
+.toast { position:fixed;left:50%;bottom:25px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--text);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:13px;transition:.2s;z-index:20;white-space:nowrap; }
+.toast.show { opacity:1;transform:translate(-50%,0); }
+@media(min-width:620px) { .app{padding:34px 24px 50px}.behaviors{grid-template-columns:repeat(3,minmax(0,1fr))}.behavior{min-height:112px}.modal-backdrop{align-items:center} }
+@media(max-width:360px) { .child-card .balance{font-size:27px}.card{padding:13px}.behavior{padding:11px;min-height:98px} }
+</style>
 </head>
 <body>
-    <p>Redirecting to <a href="https://jssgsy.github.io/movie/">repository A</a>...</p>
+<main class="app">
+  <div class="shell">
+    <header class="top">
+      <div class="brand"><div class="logo">⭐</div><div><h1>家庭积分</h1><div class="subtitle" id="todayLabel">每天一点进步</div></div></div>
+      <button class="icon-btn" id="settingsBtn" aria-label="设置">⚙️ 设置</button>
+    </header>
+
+    <section class="section">
+      <div class="section-head"><h2>小朋友</h2><button class="secondary-btn" id="addChildBtn">＋ 添加</button></div>
+      <div class="children" id="children"></div>
+    </section>
+
+    <section class="section card">
+      <div class="section-head"><h2 id="quickTitle">快速记分 · 小朋友 A</h2><small>点击行为立即记一笔</small></div>
+      <div class="behaviors" id="behaviors"></div>
+      <div class="custom-row">
+        <input id="customNote" placeholder="临时行为（可选）" aria-label="临时行为"/>
+        <input id="customPoints" type="number" min="-100" max="100" step="1" value="1" style="max-width:88px" aria-label="积分变化"/>
+        <button id="customAddBtn">记一笔</button>
+      </div>
+    </section>
+
+    <section class="section card">
+      <div class="section-head"><h2>积分记录</h2><small id="logCount">最近记录</small></div>
+      <div class="tabs">
+        <button class="tab active" data-tab="recent">最近流水</button>
+        <button class="tab" data-tab="day">按日期统计</button>
+      </div>
+      <div id="recentPane">
+        <div class="filter-row"><input type="date" id="dateFilter" aria-label="筛选日期"/><button class="secondary-btn" id="clearFilter">清除日期</button></div>
+        <div class="log-list" id="logs"></div>
+      </div>
+      <div id="dayPane" hidden>
+        <div class="filter-row"><input type="date" id="statsDate" aria-label="统计日期"/></div>
+        <div class="stats" id="stats"></div>
+        <div class="log-list" id="dayLogs"></div>
+      </div>
+    </section>
+    <div class="bottom-note">数据保存在当前设备的浏览器中 · 可通过 CSV 导出/导入，在 iPhone 与 Mac 之间转移数据<br>CSV 可使用 Mac Numbers 打开和编辑；导入会替换当前设备中的全部积分数据，请先备份</div>
+  </div>
+</main>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3 id="modalTitle">添加小朋友</h3>
+    <div id="modalBody"></div>
+    <div class="modal-actions"><button id="cancelModal">取消</button><button class="primary" id="saveModal">保存</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+(() => {
+  const today = () => {
+    const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  };
+  const nowText = () => new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false});
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const initial = {
+    children:[{id:'c1',name:'小朋友 A',initial:20},{id:'c2',name:'小朋友 B',initial:20}],
+    behaviors:[
+      {id:'b1',name:'主动收拾玩具',delta:5,enabled:true},{id:'b2',name:'按时完成任务',delta:1,enabled:true},
+      {id:'b3',name:'帮助家人',delta:1,enabled:true},{id:'b4',name:'认真阅读',delta:5,enabled:true},
+      {id:'b5',name:'没有及时收拾',delta:-2,enabled:true},{id:'b6',name:'违反约定',delta:-5,enabled:true}
+    ],
+    transactions:[
+      {id:'t1',childId:'c1',behaviorId:'b2',name:'按时完成任务',delta:5,date:today(),time:'09:10'},
+      {id:'t2',childId:'c2',behaviorId:'b5',name:'没有及时收拾',delta:-2,date:today(),time:'09:25'},
+      {id:'t3',childId:'c1',behaviorId:'b3',name:'帮助家人',delta:1,date:today(),time:'10:05'}
+    ]
+  };
+  let data;
+  try { data = JSON.parse(localStorage.getItem('familyPointsPreview') || 'null') || initial; } catch { data = initial; }
+  // Keep transactions linked to immutable child IDs, even when display names change.
+  data.children = (data.children || []).map((c,i)=>({...c,id:String(c.id||('c'+(i+1)))}));
+  data.transactions = (data.transactions || []).map(t=>({...t,childId:String(t.childId||'')}));
+  const childIds = new Set(data.children.map(c=>c.id));
+  data.transactions.forEach(t=>{if(!childIds.has(t.childId)){const match=data.children.find(c=>c.name===t.childId);if(match)t.childId=match.id;}});
+  let activeChild = data.children[0]?.id;
+  let modalMode = null;
+  let editingId = null;
+  let filterDate = '';
+  let activeTab = 'recent';
+  const $ = id => document.getElementById(id);
+  const balance = childId => (data.children.find(c=>c.id===childId)?.initial || 0) + data.transactions.filter(t=>t.childId===childId).reduce((s,t)=>s+t.delta,0);
+  const todayDelta = childId => data.transactions.filter(t=>t.childId===childId && t.date===today()).reduce((s,t)=>s+t.delta,0);
+  const save = () => { try { localStorage.setItem('familyPointsPreview',JSON.stringify(data)); } catch {} };
+  const toast = msg => { const el=$('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1700); };
+  const childName = id => data.children.find(c=>c.id===id)?.name || '已删除的孩子';
+  const renderChildren = () => {
+    $('children').innerHTML = data.children.map(c => `<button class="child-card ${c.id===activeChild?'active':''}" data-child="${esc(c.id)}"><div class="name"><span>${esc(c.name)}</span><span>${c.id===activeChild?'●':''}</span></div><div class="balance">${balance(c.id)} <span style="font-size:14px;font-weight:600;letter-spacing:0">分</span></div><div class="foot"><span>今日净变化</span><strong class="${todayDelta(c.id)>=0?'positive':'negative'}">${todayDelta(c.id)>0?'+':''}${todayDelta(c.id)}</strong></div></button>`).join('');
+    $('children').querySelectorAll('[data-child]').forEach(b=>b.onclick=()=>{activeChild=b.dataset.child;render();});
+    $('quickTitle').textContent='快速记分 · '+childName(activeChild);
+  };
+  const renderBehaviors = () => {
+    const enabled=data.behaviors.filter(b=>b.enabled);
+    $('behaviors').innerHTML=enabled.map(b=>`<button class="behavior ${b.delta>=0?'plus':'minus'}" data-behavior="${esc(b.id)}"><span class="b-name">${esc(b.name)}</span><span class="b-bottom"><span class="b-icon">${b.delta>=0?'＋':'－'}</span><span class="points">${b.delta>0?'+':''}${b.delta} 分</span></span></button>`).join('') || '<div class="empty">暂无启用的行为规则，请到设置中添加</div>';
+    $('behaviors').querySelectorAll('[data-behavior]').forEach(btn=>btn.onclick=()=>{const b=data.behaviors.find(x=>x.id===btn.dataset.behavior);if(!b)return;addTransaction(b.name,b.delta,b.id);});
+  };
+  const sorted = arr => [...arr].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+  const transactionRow = t => `<div class="log"><div class="log-mark ${t.delta>=0?'plus':'minus'}">${t.delta>=0?'↗':'↘'}</div><div class="log-main"><div class="log-title">${esc(t.name)}</div><div class="log-meta">${esc(childName(t.childId))}（ID: ${esc(t.childId)}） · ${esc(t.date)} ${esc(t.time)}</div></div><div class="log-right"><div class="log-points ${t.delta>=0?'positive':'negative'}">${t.delta>0?'+':''}${t.delta}</div><div class="log-balance">余额 ${balanceAt(t)}</div><button class="undo" data-undo="${esc(t.id)}">删除记录</button></div></div>`;
+  const balanceAt = t => {
+    const prior=data.transactions.filter(x=>x.childId===t.childId && (x.date<t.date || (x.date===t.date && (x.time<t.time || (x.time===t.time && x.id<=t.id))))).reduce((s,x)=>s+x.delta,0);
+    return (data.children.find(c=>c.id===t.childId)?.initial||0)+prior;
+  };
+  const bindUndo = root => root.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>undo(b.dataset.undo));
+  const renderLogs = () => {
+    let arr=sorted(data.transactions.filter(t=>t.childId===activeChild));
+    if(filterDate) arr=arr.filter(t=>t.date===filterDate);
+    $('logCount').textContent=`${arr.length} 笔记录`;
+    $('logs').innerHTML=arr.length?arr.slice(0,40).map(transactionRow).join(''):'<div class="empty">还没有记录，点击上方行为按钮开始记分</div>';
+    bindUndo($('logs'));
+    const day=$('statsDate').value||today();
+    const daily=data.transactions.filter(t=>t.date===day);
+    const total=daily.filter(t=>t.childId===activeChild).reduce((s,t)=>s+t.delta,0);
+    const adds=daily.filter(t=>t.childId===activeChild&&t.delta>0).reduce((s,t)=>s+t.delta,0);
+    const subs=daily.filter(t=>t.childId===activeChild&&t.delta<0).reduce((s,t)=>s+t.delta,0);
+    $('stats').innerHTML=`<div class="stat"><label>当天加分</label><strong class="positive">+${adds}</strong></div><div class="stat"><label>当天扣分</label><strong class="negative">${subs}</strong></div><div class="stat"><label>净变化</label><strong class="${total>=0?'positive':'negative'}">${total>0?'+':''}${total}</strong></div>`;
+    const childDay=sorted(daily.filter(t=>t.childId===activeChild));
+    $('dayLogs').innerHTML=childDay.length?childDay.map(transactionRow).join(''):'<div class="empty">这一天没有积分记录</div>';
+    bindUndo($('dayLogs'));
+  };
+  function addTransaction(name,delta,behaviorId='custom') {
+    if(!activeChild || !Number.isFinite(delta) || delta===0){toast('请先选择孩子，并输入非零分值');return;}
+    const t={id:'t'+Date.now()+Math.random().toString(16).slice(2,6),childId:activeChild,behaviorId,name,delta:Math.trunc(delta),date:today(),time:nowText()};
+    data.transactions.push(t);save();render();toast(`${name} ${delta>0?'+':''}${delta} 分已记录`);
+  }
+  function undo(id) {
+    const t=data.transactions.find(x=>x.id===id);if(!t)return;
+    if(!confirm(`确定删除这笔积分记录？\n\n小朋友：${childName(t.childId)}\n记录：${t.name}（${t.delta>0?'+':''}${t.delta}分）\n时间：${t.date} ${t.time}\n\n删除后会立即重新计算积分余额，且无法直接恢复。`))return;
+    data.transactions=data.transactions.filter(x=>x.id!==id);save();render();toast('已删除记录，积分已重新计算');
+  }
+  const render = () => { renderChildren();renderBehaviors();renderLogs();$('todayLabel').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'short'}); };
+  const openModal = (mode) => {
+    modalMode=mode;$('modalBackdrop').classList.add('show');
+    if(mode==='child'){
+      $('modalTitle').textContent='添加小朋友';
+      $('modalBody').innerHTML='<div class="field"><label>孩子昵称</label><input id="fName" placeholder="例如：小朋友 C" maxlength="24"></div><div class="field"><label>初始积分</label><input id="fInitial" type="number" value="0" min="-9999" max="9999"></div>';
+    } else if(mode==='behavior'){
+      $('modalTitle').textContent='添加行为规则';
+      $('modalBody').innerHTML='<div class="field"><label>行为名称</label><input id="fName" placeholder="例如：主动阅读" maxlength="40"></div><div class="field"><label>积分变化（正数加分，负数扣分）</label><input id="fDelta" type="number" value="1" min="-100" max="100"></div>';
+    } else {
+      $('modalTitle').textContent='数据与规则设置';
+      $('modalBody').innerHTML='<p style="font-size:13px;color:var(--muted);line-height:1.7">数据仅保存在当前浏览器，不会自动同步。CSV 可用 Mac Numbers 打开或编辑，也可在设备间手动转移。导入会替换当前设备中的全部数据，请先导出备份。</p><div class="field"><button class="secondary-btn" id="manageChildren">管理小朋友 / 修改名字</button></div><div class="field"><button class="secondary-btn" id="manageBehaviors">管理积分项（增删改、排序）</button></div><div class="field"><button class="secondary-btn" id="addBehavior">＋ 快速添加积分项</button></div><div class="field"><button class="secondary-btn" id="exportData">导出 CSV</button></div><div class="field"><button class="secondary-btn" id="importData">导入 CSV</button><input id="importFile" type="file" accept=".csv,text/csv" hidden></div><div class="field"><button class="secondary-btn" id="resetDemo" style="color:var(--red)">重置演示数据</button></div>';
+      setTimeout(()=>{const c=$('manageChildren');if(c)c.onclick=()=>openModal('manageChildren');const m=$('manageBehaviors');if(m)m.onclick=()=>openModal('manageBehaviors');const ab=$('addBehavior');if(ab)ab.onclick=()=>openModal('behavior');const e=$('exportData');if(e)e.onclick=exportData;const i=$('importData');if(i)i.onclick=()=>$('importFile').click();const f=$('importFile');if(f)f.onchange=importData;const r=$('resetDemo');if(r)r.onclick=()=>{if(confirm('确定清空当前记录并恢复示例数据？')){data=JSON.parse(JSON.stringify(initial));activeChild=data.children[0].id;save();closeModal();render();toast('已恢复示例数据');}};},0);
+    }
+    if(mode==='editChild'){const c=data.children.find(x=>x.id===editingId);$('modalTitle').textContent='修改小朋友';$('modalBody').innerHTML=`<div class="field"><label>小朋友名字</label><input id="fName" maxlength="24" value="${esc(c?.name||'')}"></div><div class="field"><label>初始积分</label><input id="fInitial" type="number" value="${Number(c?.initial)||0}"></div>`;}
+    if(mode==='editBehavior'){const b=data.behaviors.find(x=>x.id===editingId);$('modalTitle').textContent='修改积分项';$('modalBody').innerHTML=`<div class="field"><label>积分项名称</label><input id="fName" maxlength="40" value="${esc(b?.name||'')}"></div><div class="field"><label>积分变化（正数加分，负数扣分）</label><input id="fDelta" type="number" value="${Number(b?.delta)||1}"></div>`;}
+    if(mode==='manageChildren'){$('modalTitle').textContent='管理小朋友';$('modalBody').innerHTML=data.children.map(c=>`<div class="custom-row"><input readonly value="${esc(c.name)}"><button class="secondary-btn" data-edit-child="${esc(c.id)}">修改</button><button class="secondary-btn" data-delete-child="${esc(c.id)}">删除</button></div>`).join('')+'<div class="field"><button class="secondary-btn" id="addChildFromManage">＋ 添加小朋友</button></div>';setTimeout(()=>{document.querySelectorAll('[data-edit-child]').forEach(b=>b.onclick=()=>{editingId=b.dataset.editChild;openModal('editChild');});document.querySelectorAll('[data-delete-child]').forEach(b=>b.onclick=()=>{const id=b.dataset.deleteChild;if(data.children.length<2){toast('至少保留一位小朋友');return;}if(confirm('删除小朋友不会删除其历史记录，历史记录仍会保留原名字吗？当前版本将保留记录但关联到已删除的小朋友。确定删除？')){data.children=data.children.filter(c=>c.id!==id);if(activeChild===id)activeChild=data.children[0].id;save();openModal('manageChildren');render();}});const a=$('addChildFromManage');if(a)a.onclick=()=>openModal('child');},0);}
+    if(mode==='manageBehaviors'){$('modalTitle').textContent='管理积分项';$('modalBody').innerHTML=data.behaviors.map((b,i)=>`<div class="custom-row"><input readonly value="${esc(b.name)}（${b.delta>0?'+':''}${b.delta}分）"><button class="secondary-btn" data-move="${i}" data-step="-1" ${i===0?'disabled':''}>↑</button><button class="secondary-btn" data-move="${i}" data-step="1" ${i===data.behaviors.length-1?'disabled':''}>↓</button><button class="secondary-btn" data-edit-behavior="${esc(b.id)}">改</button><button class="secondary-btn" data-delete-behavior="${esc(b.id)}">删</button></div>`).join('')+'<div class="field"><button class="secondary-btn" id="addBehaviorFromManage">＋ 添加积分项</button></div>';setTimeout(()=>{document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.move),j=i+Number(b.dataset.step);if(j<0||j>=data.behaviors.length)return;[data.behaviors[i],data.behaviors[j]]=[data.behaviors[j],data.behaviors[i]];save();openModal('manageBehaviors');render();});document.querySelectorAll('[data-edit-behavior]').forEach(b=>b.onclick=()=>{editingId=b.dataset.editBehavior;openModal('editBehavior');});document.querySelectorAll('[data-delete-behavior]').forEach(b=>b.onclick=()=>{const id=b.dataset.deleteBehavior;if(confirm('删除这个积分项？已有历史记录会保留。')){data.behaviors=data.behaviors.filter(x=>x.id!==id);save();openModal('manageBehaviors');render();}});const a=$('addBehaviorFromManage');if(a)a.onclick=()=>openModal('behavior');},0);}
+  };
+  const closeModal=()=>{$('modalBackdrop').classList.remove('show');modalMode=null;};
+  const csvCell=v=>{const s=String(v??'');return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const exportData=()=>{const headers=['type','id','name','initial','delta','enabled','childId','behaviorId','date','time'];const rows=[headers,...data.children.map(c=>['child',c.id,c.name,c.initial,'','','','','','']),...data.behaviors.map(b=>['behavior',b.id,b.name,'',b.delta,b.enabled===false?'false':'true','','','','']),...data.transactions.map(t=>['transaction',t.id,t.name,'',t.delta,'',t.childId,t.behaviorId||'',t.date,t.time])];const csv='\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='家庭积分备份-'+today()+'.csv';a.click();URL.revokeObjectURL(url);toast('已导出 CSV');};
+  const parseCSV=text=>{const rows=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c;}else if(c==='"')quoted=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell.replace(/\r$/,''));if(row.some(v=>v!==''))rows.push(row);row=[];cell='';}else cell+=c;}row.push(cell.replace(/\r$/,''));if(row.some(v=>v!==''))rows.push(row);return rows;};
+  const importData=async e=>{const file=e.target.files?.[0];if(!file)return;try{const rows=parseCSV((await file.text()).replace(/^\ufeff/,''));if(rows.length<2||rows[0][0]!=='type')throw new Error('CSV 表头不正确');const ix=Object.fromEntries(rows[0].map((h,i)=>[h,i]));const val=(r,k)=>r[ix[k]]??'';const parsed={children:[],behaviors:[],transactions:[]};for(const r of rows.slice(1)){const type=val(r,'type'),id=val(r,'id'),name=val(r,'name');if(type==='child')parsed.children.push({id,name,initial:Number(val(r,'initial')||0)});else if(type==='behavior')parsed.behaviors.push({id,name,delta:Number(val(r,'delta')),enabled:val(r,'enabled')!=='false'});else if(type==='transaction')parsed.transactions.push({id,name,delta:Number(val(r,'delta')),childId:val(r,'childId'),behaviorId:val(r,'behaviorId')||'custom',date:val(r,'date'),time:val(r,'time')});}if(!parsed.children.length||!parsed.children.every(c=>c.id&&c.name&&Number.isFinite(c.initial))||!parsed.behaviors.every(b=>b.id&&b.name&&Number.isFinite(b.delta))||!parsed.transactions.every(t=>t.id&&t.childId&&t.name&&Number.isFinite(t.delta)&&t.date&&t.time))throw new Error('CSV 数据不完整');if(!confirm(`将导入 ${parsed.children.length} 位孩子、${parsed.behaviors.length} 条积分项、${parsed.transactions.length} 条流水，并替换本设备现有数据。建议先备份。继续吗？`))return;data=parsed;activeChild=data.children[0]?.id;filterDate='';$('dateFilter').value='';save();closeModal();render();toast('CSV 导入成功');}catch(err){alert('导入失败：请使用本应用导出的 CSV 文件，检查表头和必填字段。');}finally{e.target.value='';}};
+  $('addChildBtn').onclick=()=>openModal('child');
+  $('settingsBtn').onclick=()=>openModal('settings');
+  $('cancelModal').onclick=closeModal;
+  $('modalBackdrop').onclick=e=>{if(e.target===$('modalBackdrop'))closeModal();};
+  $('saveModal').onclick=()=>{
+    if(modalMode==='child'){
+      const name=$('fName').value.trim();const initialPoints=Number($('fInitial').value);
+      if(!name){toast('请填写孩子昵称');return;}
+      const c={id:'c'+Date.now(),name,initial:Number.isFinite(initialPoints)?Math.trunc(initialPoints):0};data.children.push(c);activeChild=c.id;
+    } else if(modalMode==='editChild'){
+      const c=data.children.find(x=>x.id===editingId);const name=$('fName').value.trim();const points=Number($('fInitial').value);if(!c||!name||!Number.isFinite(points)){toast('请填写有效信息');return;}c.name=name;c.initial=Math.trunc(points);
+    } else if(modalMode==='editBehavior'){
+      const b=data.behaviors.find(x=>x.id===editingId);const name=$('fName').value.trim();const delta=Number($('fDelta').value);if(!b||!name||!Number.isFinite(delta)||delta===0){toast('请填写名称和非零分值');return;}b.name=name;b.delta=Math.trunc(delta);
+    } else if(modalMode==='behavior'){
+      const name=$('fName').value.trim();const delta=Number($('fDelta').value);
+      if(!name||!Number.isFinite(delta)||delta===0){toast('请填写名称和非零分值');return;}
+      data.behaviors.push({id:'b'+Date.now(),name,delta:Math.trunc(delta),enabled:true});
+    } else { closeModal();return; }
+    save();closeModal();render();toast('已保存');
+  };
+  $('customAddBtn').onclick=()=>{const name=$('customNote').value.trim()||'临时加减分';const delta=Number($('customPoints').value);if(!Number.isFinite(delta)||delta===0){toast('请输入非零分值');return;}addTransaction(name,Math.trunc(delta));$('customNote').value='';};
+  $('dateFilter').onchange=e=>{filterDate=e.target.value;renderLogs();};
+  $('clearFilter').onclick=()=>{$('dateFilter').value='';filterDate='';renderLogs();};
+  $('statsDate').value=today();$('statsDate').onchange=renderLogs;
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{activeTab=b.dataset.tab;document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));$('recentPane').hidden=activeTab!=='recent';$('dayPane').hidden=activeTab!=='day';});
+  save();render();
+})();
+</script>
 </body>
 </html>
