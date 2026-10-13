@@ -50,7 +50,7 @@ h1 { font-size:24px; line-height:1.15; margin:0; letter-spacing:-.5px; }
 .behavior { border:1px solid var(--border); border-radius:15px; background:var(--surface); color:var(--text); min-width:0; min-height:105px; padding:11px 9px; text-align:left; display:flex; flex-direction:column; justify-content:space-between; gap:12px; transition:transform .12s ease,border-color .12s ease; }
 .behavior:active { transform:scale(.98); }
 .behavior .b-name { font-size:13px; line-height:1.4; font-weight:650; overflow-wrap:anywhere; }
-.behavior .b-bottom { display:flex; align-items:center; justify-content:space-between; gap:4px; }
+.behavior .b-bottom { display:flex; align-items:center; justify-content:flex-start; gap:4px; }
 .behavior .b-icon { font-size:18px; color:var(--muted); }
 .points { font-size:17px; font-weight:750; }
 .behavior.plus .points { color:var(--green); }
@@ -89,6 +89,10 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
 #modalBody { min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
 .modal h3 { margin:0 0 16px;font-size:18px; }
 .field { display:flex;flex-direction:column;gap:7px;margin:12px 0; }
+.form-hint { display:block;color:var(--muted);font-size:12px;line-height:1.6;margin:0 0 8px; }
+.child-manage-row { display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border); }
+.child-manage-name { min-width:0;overflow-wrap:anywhere;font-weight:600; }
+.child-manage-row .secondary-btn { padding:8px 11px; }
 .field label { font-size:12px;color:var(--muted); }
 .modal-actions { display:flex;gap:8px;margin-top:18px; }
 .modal-actions button { flex:1;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text); }
@@ -108,7 +112,7 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
     </header>
 
     <section class="section">
-      <div class="section-head"><h2>小朋友</h2><button class="secondary-btn" id="addChildBtn">＋ 添加</button></div>
+      <div class="section-head"><h2>小朋友</h2></div>
       <div class="children" id="children"></div>
     </section>
 
@@ -178,6 +182,7 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
   const childIds = new Set(data.children.map(c=>c.id));
   data.transactions.forEach(t=>{if(!childIds.has(t.childId)){const match=data.children.find(c=>c.name===t.childId);if(match)t.childId=match.id;}});
   let activeChild = data.children[0]?.id;
+  let returnToManageChildren = false;
   let modalMode = null;
   let editingId = null;
   let filterDate = '';
@@ -195,7 +200,7 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
   };
   const renderBehaviors = () => {
     const enabled=data.behaviors.filter(b=>b.enabled);
-    $('behaviors').innerHTML=enabled.map(b=>`<button class="behavior ${b.delta>=0?'plus':'minus'}" data-behavior="${esc(b.id)}"><span class="b-name">${esc(b.name)}</span><span class="b-bottom"><span class="b-icon">${b.delta>=0?'＋':'－'}</span><span class="points">${Math.abs(b.delta)} 分</span></span></button>`).join('') || '<div class="empty">暂无启用的行为规则，请到设置中添加</div>';
+    $('behaviors').innerHTML=enabled.map(b=>`<button class="behavior ${b.delta>=0?'plus':'minus'}" data-behavior="${esc(b.id)}"><span class="b-name">${esc(b.name)}</span><span class="b-bottom"><span class="points">${b.delta>0?'+':''}${b.delta} 分</span></span></button>`).join('') || '<div class="empty">暂无启用的行为规则，请到设置中添加</div>';
     $('behaviors').querySelectorAll('[data-behavior]').forEach(btn=>btn.onclick=()=>{const b=data.behaviors.find(x=>x.id===btn.dataset.behavior);if(!b)return;addTransaction(b.name,b.delta,b.id);});
   };
   const sorted = arr => [...arr].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
@@ -236,18 +241,18 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
     modalMode=mode;$('modalBackdrop').classList.add('show');
     if(mode==='child'){
       $('modalTitle').textContent='添加小朋友';
-      $('modalBody').innerHTML='<div class="field"><label>孩子昵称</label><input id="fName" placeholder="例如：小朋友 C" maxlength="24"></div><div class="field"><label>初始积分</label><input id="fInitial" type="number" value="0" min="-9999" max="9999"></div>';
+      $('modalBody').innerHTML='<p class="form-hint">为孩子设置一个容易辨认的名字。每个孩子的积分记录独立保存。</p><div class="field"><label for="fName">小朋友名字（必填）</label><input id="fName" placeholder="例如：小明" maxlength="24" autocomplete="off" required></div><div class="field"><label for="fInitial">初始积分</label><input id="fInitial" type="number" value="0" min="-9999" max="9999" inputmode="numeric"><small class="form-hint">设置完成后，后续加减分会在此基础上累计。</small></div>';setTimeout(()=>{$('fName')?.focus();},30);
     } else if(mode==='behavior'){
       $('modalTitle').textContent='添加行为规则';
       $('modalBody').innerHTML='<div class="field"><label>行为名称</label><input id="fName" placeholder="例如：主动阅读" maxlength="40"></div><div class="field"><label>积分变化（正数加分，负数扣分）</label><input id="fDelta" type="number" value="1" min="-100" max="100"></div>';
     } else {
       $('modalTitle').textContent='数据与规则设置';
-      $('modalBody').innerHTML='<p style="font-size:13px;color:var(--muted);line-height:1.7">数据仅保存在当前浏览器，不会自动同步。CSV 可用 Mac Numbers 打开或编辑，也可在设备间手动转移。iPhone 导入时可在文件选择器中点“浏览”进入 iCloud 云盘；已取消文件类型过滤，避免 iCloud 文件因类型标记不一致而被隐藏。导入会替换当前设备中的全部数据，请先导出备份。</p><div class="field"><button class="secondary-btn" id="manageChildren">管理小朋友 / 修改名字</button></div><div class="field"><button class="secondary-btn" id="manageBehaviors">管理积分项（增删改、排序）</button></div><div class="field"><button class="secondary-btn" id="addBehavior">＋ 快速添加积分项</button></div><div class="field"><button class="secondary-btn" id="exportData">导出 CSV</button></div><div class="field"><button class="secondary-btn" id="importData">导入 CSV</button><input id="importFile" type="file" hidden></div><div class="field"><button class="secondary-btn" id="resetDemo" style="color:var(--red)">重置演示数据</button></div>';
-      setTimeout(()=>{const c=$('manageChildren');if(c)c.onclick=()=>openModal('manageChildren');const m=$('manageBehaviors');if(m)m.onclick=()=>openModal('manageBehaviors');const ab=$('addBehavior');if(ab)ab.onclick=()=>openModal('behavior');const e=$('exportData');if(e)e.onclick=exportData;const i=$('importData');if(i)i.onclick=()=>$('importFile').click();const f=$('importFile');if(f)f.onchange=importData;const r=$('resetDemo');if(r)r.onclick=()=>{if(confirm('确定清空当前记录并恢复示例数据？')){data=JSON.parse(JSON.stringify(initial));activeChild=data.children[0].id;save();closeModal();render();toast('已恢复示例数据');}};},0);
+      $('modalBody').innerHTML='<p style="font-size:13px;color:var(--muted);line-height:1.7">数据仅保存在当前浏览器，不会自动同步。CSV 可用 Mac Numbers 打开或编辑，也可在设备间手动转移。iPhone 导入时可在文件选择器中点“浏览”进入 iCloud 云盘；已取消文件类型过滤，避免 iCloud 文件因类型标记不一致而被隐藏。导入会替换当前设备中的全部数据，请先导出备份。</p><div class="field"><button class="secondary-btn" id="manageChildren">管理小朋友 / 修改名字</button></div><div class="field"><button class="secondary-btn" id="manageBehaviors">管理积分项（增删改、排序）</button></div><div class="field"><button class="secondary-btn" id="addBehavior">＋ 快速添加积分项</button></div><div class="field"><button class="secondary-btn" id="exportData">导出 CSV</button></div><div class="field"><button class="secondary-btn" id="importData">导入 CSV</button><input id="importFile" type="file" hidden></div>';
+      setTimeout(()=>{const c=$('manageChildren');if(c)c.onclick=()=>openModal('manageChildren');const m=$('manageBehaviors');if(m)m.onclick=()=>openModal('manageBehaviors');const ab=$('addBehavior');if(ab)ab.onclick=()=>openModal('behavior');const e=$('exportData');if(e)e.onclick=exportData;const i=$('importData');if(i)i.onclick=()=>$('importFile').click();const f=$('importFile');if(f)f.onchange=importData;},0);
     }
-    if(mode==='editChild'){const c=data.children.find(x=>x.id===editingId);$('modalTitle').textContent='修改小朋友';$('modalBody').innerHTML=`<div class="field"><label>小朋友名字</label><input id="fName" maxlength="24" value="${esc(c?.name||'')}"></div><div class="field"><label>初始积分</label><input id="fInitial" type="number" value="${Number(c?.initial)||0}"></div>`;}
+    if(mode==='editChild'){const c=data.children.find(x=>x.id===editingId);$('modalTitle').textContent='编辑小朋友';$('modalBody').innerHTML=`<p class="form-hint">修改名字不会影响该孩子已有的积分流水。</p><div class="field"><label for="fName">小朋友名字（必填）</label><input id="fName" maxlength="24" autocomplete="off" value="${esc(c?.name||'')}" required></div><div class="field"><label for="fInitial">初始积分</label><input id="fInitial" type="number" inputmode="numeric" value="${Number(c?.initial)||0}"><small class="form-hint">修改初始积分会影响当前总积分；历史加减分记录不会被删除。</small></div>`;setTimeout(()=>{$('fName')?.focus();$('fName')?.select();},30);}
     if(mode==='editBehavior'){const b=data.behaviors.find(x=>x.id===editingId);$('modalTitle').textContent='修改积分项';$('modalBody').innerHTML=`<div class="field"><label>积分项名称</label><input id="fName" maxlength="40" value="${esc(b?.name||'')}"></div><div class="field"><label>积分变化（正数加分，负数扣分）</label><input id="fDelta" type="number" value="${Number(b?.delta)||1}"></div>`;}
-    if(mode==='manageChildren'){$('modalTitle').textContent='管理小朋友';$('modalBody').innerHTML=data.children.map(c=>`<div class="custom-row"><input readonly value="${esc(c.name)}"><button class="secondary-btn" data-edit-child="${esc(c.id)}">修改</button><button class="secondary-btn" data-delete-child="${esc(c.id)}">删除</button></div>`).join('')+'<div class="field"><button class="secondary-btn" id="addChildFromManage">＋ 添加小朋友</button></div>';setTimeout(()=>{document.querySelectorAll('[data-edit-child]').forEach(b=>b.onclick=()=>{editingId=b.dataset.editChild;openModal('editChild');});document.querySelectorAll('[data-delete-child]').forEach(b=>b.onclick=()=>{const id=b.dataset.deleteChild;if(data.children.length<2){toast('至少保留一位小朋友');return;}if(confirm('删除小朋友不会删除其历史记录，历史记录仍会保留原名字吗？当前版本将保留记录但关联到已删除的小朋友。确定删除？')){data.children=data.children.filter(c=>c.id!==id);if(activeChild===id)activeChild=data.children[0].id;save();openModal('manageChildren');render();}});const a=$('addChildFromManage');if(a)a.onclick=()=>openModal('child');},0);}
+    if(mode==='manageChildren'){$('modalTitle').textContent='管理小朋友';$('modalBody').innerHTML=data.children.map(c=>`<div class="child-manage-row"><div class="child-manage-name">${esc(c.name)}</div><button class="secondary-btn" data-edit-child="${esc(c.id)}">编辑</button><button class="secondary-btn" data-delete-child="${esc(c.id)}">删除</button></div>`).join('')+'<div class="field"><button class="secondary-btn" id="addChildFromManage">＋ 添加小朋友</button></div>';setTimeout(()=>{document.querySelectorAll('[data-edit-child]').forEach(b=>b.onclick=()=>{editingId=b.dataset.editChild;returnToManageChildren=true;openModal('editChild');});document.querySelectorAll('[data-delete-child]').forEach(b=>b.onclick=()=>{const id=b.dataset.deleteChild;if(data.children.length<2){toast('至少保留一位小朋友');return;}if(confirm('删除小朋友不会删除其历史记录，历史记录仍会保留原名字吗？当前版本将保留记录但关联到已删除的小朋友。确定删除？')){data.children=data.children.filter(c=>c.id!==id);if(activeChild===id)activeChild=data.children[0].id;save();openModal('manageChildren');render();}});const a=$('addChildFromManage');if(a)a.onclick=()=>{returnToManageChildren=true;openModal('child');};},0);}
     if(mode==='manageBehaviors'){$('modalTitle').textContent='管理积分项';$('modalBody').innerHTML=data.behaviors.map((b,i)=>`<div class="custom-row"><input readonly value="${esc(b.name)}（${Math.abs(b.delta)}分）"><button class="secondary-btn" data-move="${i}" data-step="-1" ${i===0?'disabled':''}>↑</button><button class="secondary-btn" data-move="${i}" data-step="1" ${i===data.behaviors.length-1?'disabled':''}>↓</button><button class="secondary-btn" data-edit-behavior="${esc(b.id)}">改</button><button class="secondary-btn" data-delete-behavior="${esc(b.id)}">删</button></div>`).join('')+'<div class="field"><button class="secondary-btn" id="addBehaviorFromManage">＋ 添加积分项</button></div>';setTimeout(()=>{document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.move),j=i+Number(b.dataset.step);if(j<0||j>=data.behaviors.length)return;[data.behaviors[i],data.behaviors[j]]=[data.behaviors[j],data.behaviors[i]];save();openModal('manageBehaviors');render();});document.querySelectorAll('[data-edit-behavior]').forEach(b=>b.onclick=()=>{editingId=b.dataset.editBehavior;openModal('editBehavior');});document.querySelectorAll('[data-delete-behavior]').forEach(b=>b.onclick=()=>{const id=b.dataset.deleteBehavior;if(confirm('删除这个积分项？已有历史记录会保留。')){data.behaviors=data.behaviors.filter(x=>x.id!==id);save();openModal('manageBehaviors');render();}});const a=$('addBehaviorFromManage');if(a)a.onclick=()=>openModal('behavior');},0);}
   };
   const closeModal=()=>{$('modalBackdrop').classList.remove('show');modalMode=null;};
@@ -255,17 +260,18 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
   const exportData=()=>{const headers=['type','id','name','initial','delta','enabled','childId','behaviorId','date','time'];const rows=[headers,...data.children.map(c=>['child',c.id,c.name,c.initial,'','','','','','']),...data.behaviors.map(b=>['behavior',b.id,b.name,'',b.delta,b.enabled===false?'false':'true','','','','']),...data.transactions.map(t=>['transaction',t.id,t.name,'',t.delta,'',t.childId,t.behaviorId||'',t.date,t.time])];const csv='\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='家庭积分备份-'+today()+'.csv';a.click();URL.revokeObjectURL(url);toast('已导出 CSV');};
   const parseCSV=text=>{const rows=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c;}else if(c==='"')quoted=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell.replace(/\r$/,''));if(row.some(v=>v!==''))rows.push(row);row=[];cell='';}else cell+=c;}row.push(cell.replace(/\r$/,''));if(row.some(v=>v!==''))rows.push(row);return rows;};
   const importData=async e=>{const file=e.target.files?.[0];if(!file)return;try{const rows=parseCSV((await file.text()).replace(/^\ufeff/,''));if(rows.length<2||rows[0][0]!=='type')throw new Error('CSV 表头不正确');const ix=Object.fromEntries(rows[0].map((h,i)=>[h,i]));const val=(r,k)=>r[ix[k]]??'';const parsed={children:[],behaviors:[],transactions:[]};for(const r of rows.slice(1)){const type=val(r,'type'),id=val(r,'id'),name=val(r,'name');if(type==='child')parsed.children.push({id,name,initial:Number(val(r,'initial')||0)});else if(type==='behavior')parsed.behaviors.push({id,name,delta:Number(val(r,'delta')),enabled:val(r,'enabled')!=='false'});else if(type==='transaction')parsed.transactions.push({id,name,delta:Number(val(r,'delta')),childId:val(r,'childId'),behaviorId:val(r,'behaviorId')||'custom',date:val(r,'date'),time:val(r,'time')});}if(!parsed.children.length||!parsed.children.every(c=>c.id&&c.name&&Number.isFinite(c.initial))||!parsed.behaviors.every(b=>b.id&&b.name&&Number.isFinite(b.delta))||!parsed.transactions.every(t=>t.id&&t.childId&&t.name&&Number.isFinite(t.delta)&&t.date&&t.time))throw new Error('CSV 数据不完整');if(!confirm(`将导入 ${parsed.children.length} 位孩子、${parsed.behaviors.length} 条积分项、${parsed.transactions.length} 条流水，并替换本设备现有数据。建议先备份。继续吗？`))return;data=parsed;activeChild=data.children[0]?.id;filterDate='';$('dateFilter').value='';save();closeModal();render();toast('CSV 导入成功');}catch(err){alert('导入失败：请使用本应用导出的 CSV 文件，检查表头和必填字段。');}finally{e.target.value='';}};
-  $('addChildBtn').onclick=()=>openModal('child');
   $('settingsBtn').onclick=()=>openModal('settings');
-  $('cancelModal').onclick=closeModal;
+  $('cancelModal').onclick=()=>{returnToManageChildren=false;closeModal();};
   $('modalBackdrop').onclick=e=>{if(e.target===$('modalBackdrop'))closeModal();};
   $('saveModal').onclick=()=>{
     if(modalMode==='child'){
       const name=$('fName').value.trim();const initialPoints=Number($('fInitial').value);
-      if(!name){toast('请填写孩子昵称');return;}
-      const c={id:'c'+Date.now(),name,initial:Number.isFinite(initialPoints)?Math.trunc(initialPoints):0};data.children.push(c);activeChild=c.id;
+      if(!name){toast('请填写小朋友名字');$('fName')?.focus();return;}
+      if(data.children.some(c=>c.name.trim().toLowerCase()===name.toLowerCase())){toast('这个名字已存在，请使用不同的名字');$('fName')?.focus();return;}
+      if(!Number.isFinite(initialPoints)||initialPoints < -9999 || initialPoints > 9999){toast('请输入 -9999 到 9999 之间的初始积分');return;}
+      const c={id:'c'+Date.now()+Math.random().toString(16).slice(2,6),name,initial:Math.trunc(initialPoints)};data.children.push(c);activeChild=c.id;
     } else if(modalMode==='editChild'){
-      const c=data.children.find(x=>x.id===editingId);const name=$('fName').value.trim();const points=Number($('fInitial').value);if(!c||!name||!Number.isFinite(points)){toast('请填写有效信息');return;}c.name=name;c.initial=Math.trunc(points);
+      const c=data.children.find(x=>x.id===editingId);const name=$('fName').value.trim();const points=Number($('fInitial').value);if(!c||!name||!Number.isFinite(points)||points < -9999 || points > 9999){toast('请填写有效的名字和初始积分');return;}if(data.children.some(x=>x.id!==c.id&&x.name.trim().toLowerCase()===name.toLowerCase())){toast('这个名字已存在，请使用不同的名字');return;}c.name=name;c.initial=Math.trunc(points);
     } else if(modalMode==='editBehavior'){
       const b=data.behaviors.find(x=>x.id===editingId);const name=$('fName').value.trim();const delta=Number($('fDelta').value);if(!b||!name||!Number.isFinite(delta)||delta===0){toast('请填写名称和非零分值');return;}b.name=name;b.delta=Math.trunc(delta);
     } else if(modalMode==='behavior'){
@@ -273,7 +279,7 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
       if(!name||!Number.isFinite(delta)||delta===0){toast('请填写名称和非零分值');return;}
       data.behaviors.push({id:'b'+Date.now(),name,delta:Math.trunc(delta),enabled:true});
     } else { closeModal();return; }
-    save();closeModal();render();toast('已保存');
+    save();closeModal();render();if(returnToManageChildren&&(modalMode===null)){returnToManageChildren=false;openModal('manageChildren');}toast('已保存');
   };
   $('customAddBtn').onclick=()=>{const name=$('customNote').value.trim()||'临时加减分';const delta=Number($('customPoints').value);if(!Number.isFinite(delta)||delta===0){toast('请输入非零分值');return;}addTransaction(name,Math.trunc(delta));$('customNote').value='';};
   $('dateFilter').onchange=e=>{filterDate=e.target.value;renderLogs();};
