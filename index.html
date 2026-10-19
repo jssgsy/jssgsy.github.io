@@ -22,6 +22,7 @@
   --shadow: 0 8px 26px light-dark(#1e293b0a,#00000020);
 }
 * { box-sizing: border-box; }
+[hidden] { display:none!important; }
 body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif; }
 button,input,select { font:inherit; }
 button { cursor:pointer; }
@@ -108,6 +109,24 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
 .cashout-btn { border:0; border-radius:13px; background:var(--blue); color:#fff; font-weight:700; padding:13px 18px; white-space:nowrap; }
 .cashout-btn:disabled { opacity:.4; cursor:not-allowed; }
 .cashout-btn.ready { background:var(--green); }
+.range-row { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+.range-row .range-btn { flex:1 1 0; min-width:62px; text-align:center; }
+.custom-range { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); gap:8px; align-items:center; }
+.custom-range input { width:100%; min-width:0; padding:10px 9px; }
+.range-sep { color:var(--muted); font-size:12px; }
+.range-btn { padding:8px 13px; font-size:12px; border-radius:10px; }
+.range-btn.active { border-color:var(--blue); color:var(--blue); background:var(--blue-bg); font-weight:700; }
+.trend-legend { display:flex; gap:16px; justify-content:center; font-size:11px; color:var(--muted); margin-bottom:8px; }
+.legend-dot { display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:5px; }
+.trend-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-bottom:12px; }
+.trend-summary .stat strong { font-size:15px; }
+.chart-title { font-size:12px; color:var(--muted); font-weight:650; margin:14px 2px 4px; }
+.trend-svg { width:100%; height:auto; display:block; }
+.trend-svg text { pointer-events:none; }
+.trend-detail { text-align:center; font-size:12px; color:var(--muted); min-height:18px; margin-top:8px; }
+.behavior { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
+.behavior.dragging { z-index:5; position:fixed; pointer-events:none; box-shadow:0 16px 40px #1e293b33; transition:none; will-change:transform; transform:scale(1.03); margin:0; }
+@media(max-width:400px) { .trend-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(min-width:620px) { .app{padding:34px 24px 50px}.behavior{min-height:112px;padding:13px 12px}.behavior .b-name{font-size:14px}.points{font-size:19px}.modal-backdrop{align-items:center}.modal{max-height:calc(100dvh - 48px)} }
 @media(max-width:360px) { .child-card .balance{font-size:27px}.card{padding:13px}.behaviors{gap:6px}.behavior{padding:9px 7px;min-height:94px;border-radius:12px}.behavior .b-name{font-size:12px}.behavior .b-icon{font-size:16px}.points{font-size:15px} }
 </style>
@@ -137,7 +156,7 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
     </section>
 
     <section class="section card">
-      <div class="section-head"><h2 id="quickTitle">快速记账 · 小朋友 A</h2><small>点击项目立即记一笔</small></div>
+      <div class="section-head"><h2 id="quickTitle">快速记账 · 小朋友 A</h2><small>点击记一笔 · 长按拖拽排序</small></div>
       <div class="behaviors" id="behaviors"></div>
       <div class="custom-row">
         <input id="customNote" placeholder="临时项目（可选）" aria-label="临时项目"/>
@@ -151,6 +170,7 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
       <div class="tabs">
         <button class="tab active" data-tab="recent">最近流水</button>
         <button class="tab" data-tab="day">按日期统计</button>
+        <button class="tab" data-tab="trend">每日趋势</button>
       </div>
       <div id="recentPane">
         <div class="filter-row"><input type="date" id="dateFilter" aria-label="筛选日期"/><button class="secondary-btn" id="clearFilter">清除日期</button></div>
@@ -160,6 +180,26 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
         <div class="filter-row"><input type="date" id="statsDate" aria-label="统计日期"/></div>
         <div class="stats" id="stats"></div>
         <div class="log-list" id="dayLogs"></div>
+      </div>
+      <div id="trendPane" hidden>
+        <div class="range-row">
+          <button class="secondary-btn range-btn" data-range="7">近 7 天</button>
+          <button class="secondary-btn range-btn active" data-range="14">近 14 天</button>
+          <button class="secondary-btn range-btn" data-range="30">近 30 天</button>
+          <button class="secondary-btn range-btn" data-range="custom">自定义</button>
+        </div>
+        <div class="range-row custom-range" id="customRange" hidden>
+          <input type="date" id="trendStart" aria-label="开始日期"/>
+          <span class="range-sep">至</span>
+          <input type="date" id="trendEnd" aria-label="结束日期"/>
+        </div>
+        <div class="trend-legend"><span><i class="legend-dot" style="background:var(--green)"></i>加钱</span><span><i class="legend-dot" style="background:var(--red)"></i>扣钱</span></div>
+        <div class="trend-summary" id="trendSummary"></div>
+        <div class="chart-title">每日金额（块）</div>
+        <div id="trendAmount"></div>
+        <div class="chart-title">每日笔数（笔）</div>
+        <div id="trendCount"></div>
+        <div class="trend-detail" id="trendDetail"></div>
       </div>
     </section>
     <div class="bottom-note">数据保存在当前设备的浏览器中 · 可通过 CSV / 图片导出，在 iPhone 与 Mac 之间转移数据<br>CSV 可使用 Mac Numbers 打开和编辑；导入会替换当前设备中的全部记账数据，请先备份</div>
@@ -219,10 +259,78 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
     $('children').querySelectorAll('[data-child]').forEach(b=>b.onclick=()=>{activeChild=b.dataset.child;render();});
     $('quickTitle').textContent='快速记账 · '+childName(activeChild);
   };
+  let dragJustEnded = 0;
+  let dragActive = false;
   const renderBehaviors = () => {
     const enabled=data.behaviors.filter(b=>b.enabled);
-    $('behaviors').innerHTML=enabled.map(b=>`<button class="behavior ${b.delta>=0?'plus':'minus'}" data-behavior="${esc(b.id)}"><span class="b-name">${esc(b.name)}</span><span class="b-bottom"><span class="points">${b.delta>0?'+':''}${b.delta} 块</span></span></button>`).join('') || '<div class="empty">暂无启用的记账项，请到设置中添加</div>';
-    $('behaviors').querySelectorAll('[data-behavior]').forEach(btn=>btn.onclick=()=>{const b=data.behaviors.find(x=>x.id===btn.dataset.behavior);if(!b)return;addTransaction(b.name,b.delta,b.id);});
+    const grid=$('behaviors');
+    grid.innerHTML=enabled.map(b=>`<button class="behavior ${b.delta>=0?'plus':'minus'}" data-behavior="${esc(b.id)}"><span class="b-name">${esc(b.name)}</span><span class="b-bottom"><span class="points">${b.delta>0?'+':''}${b.delta} 块</span></span></button>`).join('') || '<div class="empty">暂无启用的记账项，请到设置中添加</div>';
+    grid.querySelectorAll('[data-behavior]').forEach(btn=>{
+      btn.onclick=()=>{if(Date.now()-dragJustEnded<400)return;const b=data.behaviors.find(x=>x.id===btn.dataset.behavior);if(!b)return;addTransaction(b.name,b.delta,b.id);};
+      bindLongPress(btn,grid);
+    });
+  };
+  const bindLongPress=(btn,grid)=>{
+    let timer=null,sx=0,sy=0;
+    const cancel=()=>{clearTimeout(timer);timer=null;};
+    btn.addEventListener('pointerdown',e=>{
+      if(e.button||dragActive)return;
+      sx=e.clientX;sy=e.clientY;
+      cancel();
+      timer=setTimeout(()=>{
+        timer=null;
+        if(dragActive)return;
+        startDrag(btn,grid,e.pointerId,sx,sy);
+        if(navigator.vibrate)navigator.vibrate(10);
+      },350);
+    });
+    btn.addEventListener('pointermove',e=>{if(timer&&(Math.abs(e.clientX-sx)>10||Math.abs(e.clientY-sy)>10))cancel();});
+    btn.addEventListener('pointerup',cancel);
+    btn.addEventListener('pointercancel',cancel);
+    btn.addEventListener('pointerleave',()=>{if(timer)cancel();});
+  };
+  const startDrag=(btn,grid,pointerId,sx,sy)=>{
+    const rect=btn.getBoundingClientRect();
+    const offX=sx-rect.left,offY=sy-rect.top;
+    const move=e=>{
+      if(e.pointerId!==pointerId)return;
+      e.preventDefault();
+      btn.style.left=(e.clientX-offX)+'px';
+      btn.style.top=(e.clientY-offY)+'px';
+      const over=document.elementFromPoint(e.clientX,e.clientY)?.closest('.behavior');
+      if(over&&over!==btn&&over.parentElement===grid){
+        const r=over.getBoundingClientRect();
+        const before=(e.clientY<r.top+r.height/2)||(Math.abs(e.clientY-(r.top+r.height/2))<r.height/2&&e.clientX<r.left+r.width/2);
+        grid.insertBefore(btn,before?over:over.nextSibling);
+      }
+    };
+    const end=e=>{
+      if(e&&e.pointerId!==pointerId)return;
+      document.removeEventListener('pointermove',move);
+      document.removeEventListener('pointerup',end);
+      document.removeEventListener('pointercancel',end);
+      document.removeEventListener('touchmove',blockScroll);
+      btn.classList.remove('dragging');
+      btn.style.left='';btn.style.top='';
+      dragActive=false;
+      dragJustEnded=Date.now();
+      const order=[...grid.querySelectorAll('[data-behavior]')].map(x=>x.dataset.behavior);
+      const enabled=data.behaviors.filter(b=>b.enabled);
+      if(order.length===enabled.length){
+        const byId=new Map(enabled.map(b=>[b.id,b]));
+        const newEnabled=order.map(id=>byId.get(id));
+        let k=0;
+        data.behaviors=data.behaviors.map(b=>b.enabled?newEnabled[k++]:b);
+        save();render();toast('顺序已保存');
+      }
+    };
+    const blockScroll=ev=>{if(ev.cancelable)ev.preventDefault();};
+    dragActive=true;
+    btn.classList.add('dragging');
+    document.addEventListener('pointermove',move,{passive:false});
+    document.addEventListener('pointerup',end);
+    document.addEventListener('pointercancel',end);
+    document.addEventListener('touchmove',blockScroll,{passive:false});
   };
   const sorted = arr => [...arr].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
   const transactionRow = t => `<div class="log"><div class="log-mark ${t.delta>=0?'plus':'minus'}">${t.delta>=0?'↗':'↘'}</div><div class="log-main"><div class="log-title">${esc(t.name)}</div><div class="log-meta">${esc(childName(t.childId))}（ID: ${esc(t.childId)}） · ${esc(t.date)} ${esc(t.time)}</div></div><div class="log-right"><div class="log-points ${t.delta>=0?'positive':'negative'}">${Math.abs(t.delta)}</div><div class="log-balance">余额 ${balanceAt(t)}</div><button class="undo" data-undo="${esc(t.id)}">删除记录</button></div></div>`;
@@ -246,6 +354,51 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
     const childDay=sorted(daily.filter(t=>t.childId===activeChild));
     $('dayLogs').innerHTML=childDay.length?childDay.map(transactionRow).join(''):'<div class="empty">这一天没有记账记录</div>';
     bindUndo($('dayLogs'));
+  };
+  let trendDays=14;
+  let trendMode='preset';
+  let customStart='',customEnd='';
+  const MAX_CUSTOM_DAYS=92;
+  const shiftDay=(base,delta)=>{const d=new Date(base);d.setDate(d.getDate()+delta);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+  const dayRangeKeys=(start,end)=>{const keys=[];const d=new Date(start+'T00:00:00'),last=new Date(end+'T00:00:00');while(d<=last){keys.push(shiftDay(d,0));d.setDate(d.getDate()+1);}return keys;};
+  const fmtDay=key=>{const [,m,d]=key.split('-');return `${Number(m)}月${Number(d)}日`;};
+  const trendPeriodLabel=()=>trendMode==='custom'?`${fmtDay(customStart)} – ${fmtDay(customEnd)}`:`近 ${trendDays} 天`;
+  const renderTrend=()=>{
+    let days;
+    if(trendMode==='custom'&&customStart&&customEnd){days=dayRangeKeys(customStart,customEnd);}
+    else {days=[];const now=new Date();for(let i=trendDays-1;i>=0;i--)days.push(shiftDay(now,-i));}
+    const n=days.length;
+    const st=days.map(date=>{const ts=data.transactions.filter(t=>t.childId===activeChild&&t.date===date);const p=ts.filter(t=>t.delta>0),m=ts.filter(t=>t.delta<0);return{date,ps:p.reduce((s,t)=>s+t.delta,0),ms:-m.reduce((s,t)=>s+t.delta,0),pc:p.length,mc:m.length};});
+    const sum=k=>st.reduce((s,d)=>s+d[k],0);
+    $('trendSummary').innerHTML=`<div class="stat"><label>加钱笔数</label><strong class="positive">${sum('pc')} 笔</strong></div><div class="stat"><label>加钱金额</label><strong class="positive">${sum('ps')} 块</strong></div><div class="stat"><label>扣钱笔数</label><strong class="negative">${sum('mc')} 笔</strong></div><div class="stat"><label>扣钱金额</label><strong class="negative">${sum('ms')} 块</strong></div>`;
+    if(!st.some(d=>d.pc||d.mc)){$('trendAmount').innerHTML='';$('trendCount').innerHTML='';$('trendDetail').textContent=`${trendPeriodLabel()} 没有记账记录`;return;}
+    const chart=(el,keyUp,keyDown)=>{
+      const W=Math.max(260,Math.round(el.clientWidth||600)),H=Math.max(140,Math.min(210,Math.round(W*0.3)+70));
+      const padL=6,padR=6,padT=16,padB=24;
+      const mid=padT+(H-padT-padB)/2;
+      const max=Math.max(1,...st.map(d=>Math.max(d[keyUp],d[keyDown])));
+      const slot=(W-padL-padR)/n,bw=Math.max(1.2,Math.min(20,slot*0.6));
+      const labelStep=Math.ceil(n/7);
+      const parts=[`<line x1="${padL}" y1="${mid}" x2="${W-padR}" y2="${mid}" style="stroke:var(--border)" stroke-width="1"/>`];
+      st.forEach((d,i)=>{
+        const cx=padL+slot*i+slot/2;
+        if(i===n-1)parts.push(`<rect x="${padL+slot*i}" y="${padT-8}" width="${slot}" height="${H-padT-padB+16}" rx="4" style="fill:var(--surface-2)" opacity=".6"/>`);
+        const hUp=d[keyUp]/max*(mid-padT),hDn=d[keyDown]/max*(H-padB-mid);
+        if(hUp>0)parts.push(`<rect x="${(cx-bw/2).toFixed(1)}" y="${(mid-hUp).toFixed(1)}" width="${bw.toFixed(1)}" height="${hUp.toFixed(1)}" rx="2.5" style="fill:var(--green)"/>`);
+        if(hDn>0)parts.push(`<rect x="${(cx-bw/2).toFixed(1)}" y="${mid}" width="${bw.toFixed(1)}" height="${hDn.toFixed(1)}" rx="2.5" style="fill:var(--red)"/>`);
+        if(i%labelStep===0||i===n-1){const dt=new Date(d.date+'T00:00:00');parts.push(`<text x="${cx.toFixed(1)}" y="${H-7}" text-anchor="middle" font-size="10" style="fill:var(--muted)">${dt.getMonth()+1}/${dt.getDate()}</text>`);}
+      });
+      parts.push(`<text x="${padL+2}" y="${padT-5}" font-size="10" style="fill:var(--muted)">单日最多 ${max}</text>`);
+      el.innerHTML=`<svg class="trend-svg" viewBox="0 0 ${W} ${H}">${parts.join('')}</svg>`;
+      const svgEl=el.querySelector('svg');
+      const show=i=>{const d=st[i],dt=new Date(d.date+'T00:00:00');$('trendDetail').textContent=`${dt.getMonth()+1}月${dt.getDate()}日 · 加钱 ${d.pc} 笔 +${d.ps} 块 · 扣钱 ${d.mc} 笔 -${d.ms} 块`;};
+      const pick=ev=>{const rc=svgEl.getBoundingClientRect();const x=(ev.clientX-rc.left)/rc.width*W;const i=Math.max(0,Math.min(n-1,Math.floor((x-padL)/slot)));show(i);};
+      svgEl.addEventListener('pointerdown',ev=>{pick(ev);if(svgEl.setPointerCapture)try{svgEl.setPointerCapture(ev.pointerId);}catch{}});
+      svgEl.addEventListener('pointermove',ev=>{if(ev.pointerType==='touch'||ev.buttons)pick(ev);});
+    };
+    chart($('trendAmount'),'ps','ms');
+    chart($('trendCount'),'pc','mc');
+    $('trendDetail').textContent=`${trendPeriodLabel()} · 点按图表可查看某天明细`;
   };
   function addTransaction(name,delta,behaviorId='custom') {
     if(!activeChild || !Number.isFinite(delta) || delta===0){toast('请先选择小朋友，并输入非零金额');return;}
@@ -277,7 +430,7 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
     btn.closest('.cashout-row').classList.toggle('ready',times>0);
     btn.textContent=times>1?`兑现 ${CASHOUT} 块（${times}）`:`兑现 ${CASHOUT} 块`;
   };
-  const render = () => { renderChildren();renderBehaviors();renderLogs();renderCashout();$('todayLabel').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'short'}); };
+  const render = () => { renderChildren();renderBehaviors();renderLogs();renderCashout();if(activeTab==='trend')renderTrend();$('todayLabel').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'short'}); };
   const openModal = (mode) => {
     modalMode=mode;$('modalBackdrop').classList.add('show');
     if(mode==='child'){
@@ -387,7 +540,39 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
   $('dateFilter').onchange=e=>{filterDate=e.target.value;renderLogs();};
   $('clearFilter').onclick=()=>{$('dateFilter').value='';filterDate='';renderLogs();};
   $('statsDate').value=today();$('statsDate').onchange=renderLogs;
-  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{activeTab=b.dataset.tab;document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));$('recentPane').hidden=activeTab!=='recent';$('dayPane').hidden=activeTab!=='day';});
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{activeTab=b.dataset.tab;document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));$('recentPane').hidden=activeTab!=='recent';$('dayPane').hidden=activeTab!=='day';$('trendPane').hidden=activeTab!=='trend';if(activeTab==='trend')renderTrend();});
+  const syncTrendRangeUI=()=>{
+    document.querySelectorAll('[data-range]').forEach(x=>x.classList.toggle('active',x.dataset.range===(trendMode==='custom'?'custom':String(trendDays))));
+    $('customRange').hidden=trendMode!=='custom';
+  };
+  document.querySelectorAll('[data-range]').forEach(b=>b.onclick=()=>{
+    if(b.dataset.range==='custom'){
+      trendMode='custom';
+      if(!customEnd)customEnd=today();
+      if(!customStart)customStart=shiftDay(new Date(customEnd+'T00:00:00'),-13);
+      $('trendStart').value=customStart;$('trendEnd').value=customEnd;
+      syncTrendRangeUI();renderTrend();
+    } else {
+      trendMode='preset';trendDays=Number(b.dataset.range);
+      syncTrendRangeUI();renderTrend();
+    }
+  });
+  const applyCustomRange=()=>{
+    const s=$('trendStart').value,e=$('trendEnd').value;
+    if(!s||!e){toast('请选择开始和结束日期');return;}
+    let start=s,end=e;
+    if(start>end){end=start;toast('开始日期不能晚于结束日期，已调整为同一天');}
+    if(Math.round((new Date(end+'T00:00:00')-new Date(start+'T00:00:00'))/86400000)+1>MAX_CUSTOM_DAYS){
+      start=shiftDay(new Date(end+'T00:00:00'),-(MAX_CUSTOM_DAYS-1));
+      toast(`自定义区间最多 ${MAX_CUSTOM_DAYS} 天，已截取最近 ${MAX_CUSTOM_DAYS} 天`);
+    }
+    customStart=start;customEnd=end;$('trendStart').value=start;$('trendEnd').value=end;
+    renderTrend();
+  };
+  $('trendStart').onchange=applyCustomRange;
+  $('trendEnd').onchange=applyCustomRange;
+  let resizeTimer=null;
+  window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(activeTab==='trend')renderTrend();},200);});
   save();render();
 })();
 </script>
