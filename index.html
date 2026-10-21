@@ -129,6 +129,17 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
 .behavior-tools input { flex:1; min-width:0; -webkit-appearance:none; appearance:none; }
 .behavior-tools button { white-space:nowrap; padding:10px 12px; font-size:12px; }
 .sort-btn { padding:8px 11px; font-size:12px; border-radius:10px; white-space:nowrap; }
+.head-btns { display:flex; align-items:center; gap:6px; justify-content:flex-end; flex-wrap:wrap; }
+.usage-summary { font-size:12px; color:var(--muted); margin:-2px 2px 10px; line-height:1.6; }
+.behaviors.usage-list { display:flex; flex-direction:column; gap:6px; }
+.usage-row { position:relative; display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:10px 11px; border:1px solid var(--border); border-radius:12px; background:var(--surface); overflow:hidden; }
+.usage-fill { position:absolute; left:0; top:0; bottom:0; background:var(--green); opacity:.14; pointer-events:none; }
+.usage-row.minus .usage-fill { background:var(--red); }
+.usage-name { position:relative; flex:1; min-width:0; font-size:14px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.usage-last { position:relative; font-size:11px; color:var(--muted); white-space:nowrap; }
+.usage-count { position:relative; font-size:14px; font-weight:700; color:var(--green); white-space:nowrap; min-width:44px; text-align:right; }
+.usage-row.minus .usage-count { color:var(--red); }
+.usage-row.zero .usage-count { color:var(--muted); font-size:12px; font-weight:600; }
 .behavior { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
 .behavior.dragging { z-index:5; position:fixed; pointer-events:none; box-shadow:0 16px 40px #1e293b33; transition:none; will-change:transform; transform:scale(1.03); transform-origin:0 0; margin:0; }
 @media(max-width:400px) { .trend-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
@@ -161,14 +172,15 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
     </section>
 
     <section class="section card">
-      <div class="section-head"><h2 id="quickTitle">快速记账 · 小朋友 A</h2><button class="secondary-btn sort-btn" id="behaviorSortBtn">常用优先 ⇄</button></div>
+      <div class="section-head"><h2 id="quickTitle">快速记账 · 小朋友 A</h2><div class="head-btns"><button class="secondary-btn sort-btn" id="behaviorSortBtn">常用优先 ⇄</button><button class="secondary-btn sort-btn" id="usageMetricBtn" hidden>近30天 ⇄</button><button class="secondary-btn sort-btn" id="usageToggleBtn">用量</button></div></div>
       <div class="behavior-tools">
         <input type="search" id="behaviorSearch" placeholder="搜索记账项" aria-label="搜索记账项" autocomplete="off"/>
         <button class="secondary-btn" id="behaviorMore" hidden>显示全部</button>
       </div>
+      <div class="usage-summary" id="usageSummary" hidden></div>
       <div class="behaviors" id="behaviors"></div>
       <div class="behavior-hint" id="behaviorHint"></div>
-      <div class="custom-row">
+      <div class="custom-row" id="customRow">
         <input id="customNote" placeholder="临时项目（可选）" aria-label="临时项目"/>
         <input id="customPoints" type="number" min="-100" max="100" step="1" value="1" style="max-width:88px" aria-label="金额变化"/>
         <button id="customAddBtn">记一笔</button>
@@ -267,7 +279,6 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
   const renderChildren = () => {
     $('children').innerHTML = data.children.map(c => `<button class="child-card ${c.id===activeChild?'active':''}" data-child="${esc(c.id)}"><div class="name"><span>${esc(c.name)}</span><span>${c.id===activeChild?'●':''}</span></div><div class="balance">${balance(c.id)} <span style="font-size:14px;font-weight:600;letter-spacing:0">块</span></div><div class="foot"><span>今日净变化</span><strong class="${todayDelta(c.id)>=0?'positive':'negative'}">${todayDelta(c.id)>0?'+':''}${todayDelta(c.id)}</strong></div></button>`).join('');
     $('children').querySelectorAll('[data-child]').forEach(b=>b.onclick=()=>{activeChild=b.dataset.child;render();});
-    $('quickTitle').textContent='快速记账 · '+childName(activeChild);
   };
   let dragJustEnded = 0;
   let dragActive = false;
@@ -275,14 +286,19 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
   let behaviorSort=(data.behaviorSort==='custom')?'custom':'usage';
   let behaviorSearch='';
   let behaviorExpanded=false;
+  let usageView=false;
+  let usageMetric='recent';
+  const USAGE_RECENT_DAYS=30;
   const usageStats=()=>{
-    const total={},recent={},cutoff=shiftDay(new Date(),-30);
+    const total={},recent={},last={},cutoff=shiftDay(new Date(),-USAGE_RECENT_DAYS);
     data.transactions.forEach(t=>{
       const id=t.behaviorId;if(!id||id==='custom'||id==='cashout')return;
       total[id]=(total[id]||0)+1;
       if(t.date>=cutoff)recent[id]=(recent[id]||0)+1;
+      const k=t.date+' '+(t.time||'');
+      if(!last[id]||k>last[id])last[id]=k;
     });
-    return {total,recent};
+    return {total,recent,last};
   };
   const usageCount=id=>data.transactions.filter(t=>t.behaviorId===id).length;
   const behaviorDisplayOrder=(enabled,stats)=>{
@@ -316,6 +332,43 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
     else more.hidden=true;
     $('behaviorSortBtn').textContent=behaviorSort==='usage'?'常用优先 ⇄':'自定义排序 ⇄';
     $('behaviorHint').textContent=behaviorSort==='usage'?'按近 30 天使用次数排序 · 长按拖动可锁定为自定义顺序':'自定义顺序 · 长按项目可拖拽排序';
+  };
+  const renderUsage = () => {
+    const stats=usageStats();
+    const key=usageMetric==='recent'?'recent':'total';
+    const enabled=data.behaviors.filter(b=>b.enabled);
+    const idx=new Map(enabled.map((b,i)=>[b.id,i]));
+    const items=enabled.map(b=>({b,c:stats[key][b.id]||0,total:stats.total[b.id]||0,last:stats.last[b.id]||''}));
+    items.sort((x,y)=>y.c-x.c||y.total-x.total||idx.get(x.b.id)-idx.get(y.b.id));
+    const max=Math.max(1,...items.map(it=>it.c));
+    const q=behaviorSearch.trim().toLowerCase();
+    const shown=q?items.filter(it=>it.b.name.toLowerCase().includes(q)):items;
+    const grid=$('behaviors');
+    grid.innerHTML=shown.map(it=>{
+      const pct=Math.round(it.c/max*100);
+      const lastTxt=it.last?('上次 '+fmtDay(it.last.slice(0,10))):'';
+      return `<div class="usage-row ${it.b.delta>=0?'plus':'minus'} ${it.c?'':'zero'}" data-behavior="${esc(it.b.id)}"><span class="usage-fill" style="width:${pct}%"></span><span class="usage-name">${esc(it.b.name)}</span><span class="usage-last">${lastTxt}</span><span class="usage-count">${it.c?it.c+' 次':'未使用'}</span></div>`;
+    }).join('') || (q?`<div class="empty">没有匹配「${esc(behaviorSearch.trim())}」的记账项</div>`:'<div class="empty">暂无启用的记账项，请到设置中添加</div>');
+    const sum=items.reduce((s,it)=>s+it.c,0);
+    const unused=items.filter(it=>it.c===0).length;
+    const rangeTxt=usageMetric==='recent'?`近 ${USAGE_RECENT_DAYS} 天`:'全部';
+    $('usageSummary').textContent=`共 ${items.length} 项 · ${rangeTxt}合计 ${sum} 次`+(unused?` · ${unused} 项未使用`:'');
+  };
+  const syncQuickUI=()=>{
+    $('quickTitle').textContent=(usageView?'使用统计 · ':'快速记账 · ')+childName(activeChild);
+    $('behaviorSortBtn').hidden=usageView;
+    $('usageMetricBtn').hidden=!usageView;
+    $('usageMetricBtn').textContent=usageMetric==='recent'?`近${USAGE_RECENT_DAYS}天 ⇄`:'全部 ⇄';
+    $('usageToggleBtn').textContent=usageView?'记账':'用量';
+    $('usageSummary').hidden=!usageView;
+    $('behaviorMore').hidden=usageView;
+    $('customRow').hidden=usageView;
+    if(usageView)$('behaviorHint').textContent='条形长度代表使用次数占比 · 点「记账」返回记录模式';
+  };
+  const renderQuick=()=>{
+    $('behaviors').classList.toggle('usage-list',usageView);
+    syncQuickUI();
+    if(usageView)renderUsage();else renderBehaviors();
   };
   const bindLongPress=(btn,grid)=>{
     let timer=null,sx=0,sy=0;
@@ -494,7 +547,7 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
     btn.closest('.cashout-row').classList.toggle('ready',times>0);
     btn.textContent=times>1?`兑现 ${CASHOUT} 块（${times}）`:`兑现 ${CASHOUT} 块`;
   };
-  const render = () => { renderChildren();renderBehaviors();renderLogs();renderCashout();if(activeTab==='trend')renderTrend();$('todayLabel').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'short'}); };
+  const render = () => { renderChildren();renderQuick();renderLogs();renderCashout();if(activeTab==='trend')renderTrend();$('todayLabel').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'short'}); };
   const openModal = (mode) => {
     modalMode=mode;$('modalBackdrop').classList.add('show');
     if(mode==='child'){
@@ -603,8 +656,10 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
   };
   $('customAddBtn').onclick=()=>{const name=$('customNote').value.trim()||'临时记账';const delta=Number($('customPoints').value);if(!Number.isFinite(delta)||delta===0){toast('请输入非零金额');return;}addTransaction(name,Math.trunc(delta));$('customNote').value='';};
   $('behaviorSortBtn').onclick=()=>{behaviorSort=behaviorSort==='usage'?'custom':'usage';data.behaviorSort=behaviorSort;save();renderBehaviors();toast(behaviorSort==='usage'?'已切换为常用优先排序':'已切换为自定义排序，长按项目可拖动');};
-  $('behaviorSearch').addEventListener('input',e=>{behaviorSearch=e.target.value;renderBehaviors();});
+  $('behaviorSearch').addEventListener('input',e=>{behaviorSearch=e.target.value;usageView?renderUsage():renderBehaviors();});
   $('behaviorMore').onclick=()=>{behaviorExpanded=!behaviorExpanded;renderBehaviors();};
+  $('usageToggleBtn').onclick=()=>{usageView=!usageView;renderQuick();};
+  $('usageMetricBtn').onclick=()=>{usageMetric=usageMetric==='recent'?'all':'recent';renderQuick();};
   $('cashoutBtn').onclick=cashout;
   $('dateFilter').onchange=e=>{filterDate=e.target.value;renderLogs();};
   $('clearFilter').onclick=()=>{$('dateFilter').value='';filterDate='';renderLogs();};
