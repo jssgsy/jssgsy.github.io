@@ -132,7 +132,30 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
 .head-btns { display:flex; align-items:center; gap:6px; justify-content:flex-end; flex-wrap:wrap; }
 .usage-summary { font-size:12px; color:var(--muted); margin:-2px 2px 10px; line-height:1.6; }
 .behaviors.usage-list { display:flex; flex-direction:column; gap:6px; }
-.usage-row { position:relative; display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:10px 11px; border:1px solid var(--border); border-radius:12px; background:var(--surface); overflow:hidden; }
+.usage-row { position:relative; display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:10px 11px; border:1px solid var(--border); border-radius:12px; background:var(--surface); overflow:hidden; cursor:pointer; }
+.usage-row:hover { border-color:var(--blue); }
+.usage-row:active { transform:scale(.995); }
+.usage-go { position:relative; color:var(--muted); font-size:17px; line-height:1; flex-shrink:0; }
+.detail-tiles { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
+.detail-tiles .stat strong { font-size:15px; }
+.modal h4 { margin:18px 0 8px; font-size:13px; color:var(--muted); font-weight:600; }
+.detail-split { display:flex; flex-direction:column; gap:8px; }
+.split-row { display:flex; align-items:center; gap:8px; width:100%; border:0; background:transparent; padding:4px 6px; margin:0 -6px; border-radius:9px; text-align:left; color:var(--text); font-size:13px; }
+.split-row:hover .split-name { color:var(--blue); }
+.split-row.active { background:var(--blue-bg); }
+.split-row.active .split-name { color:var(--blue); font-weight:650; }
+.link-btn { border:0; background:transparent; color:var(--blue); font-size:12px; padding:0; text-decoration:underline; }
+.split-name { min-width:48px; max-width:84px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.split-bar { flex:1; height:8px; border-radius:6px; background:var(--surface-2); overflow:hidden; }
+.split-bar i { display:block; height:100%; border-radius:6px; background:var(--green); }
+.split-n { color:var(--muted); font-size:12px; white-space:nowrap; }
+.detail-list { display:flex; flex-direction:column; }
+.detail-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); }
+.detail-row:last-child { border-bottom:0; }
+.detail-date { font-size:12px; color:var(--muted); min-width:58px; }
+.detail-time { font-size:12px; color:var(--muted); min-width:40px; }
+.detail-child { flex:1; min-width:0; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.detail-amount { font-size:14px; font-weight:700; white-space:nowrap; }
 .usage-fill { position:absolute; left:0; top:0; bottom:0; background:var(--green); opacity:.14; pointer-events:none; }
 .usage-row.minus .usage-fill { background:var(--red); }
 .usage-name { position:relative; flex:1; min-width:0; font-size:14px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -143,6 +166,8 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
 .behavior { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
 .behavior.dragging { z-index:5; position:fixed; pointer-events:none; box-shadow:0 16px 40px #1e293b33; transition:none; will-change:transform; transform:scale(1.03); transform-origin:0 0; margin:0; }
 @media(max-width:400px) { .trend-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:480px) { .detail-tiles { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:360px) { .usage-last { display:none; } }
 @media(min-width:620px) { .app{padding:34px 24px 50px}.behavior{min-height:112px;padding:13px 12px}.behavior .b-name{font-size:14px}.points{font-size:19px}.modal-backdrop{align-items:center}.modal{max-height:calc(100dvh - 48px)} }
 @media(max-width:360px) { .child-card .balance{font-size:27px}.card{padding:13px}.behaviors{gap:6px}.behavior{padding:9px 7px;min-height:94px;border-radius:12px}.behavior .b-name{font-size:12px}.behavior .b-icon{font-size:16px}.points{font-size:15px} }
 </style>
@@ -347,12 +372,41 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
     grid.innerHTML=shown.map(it=>{
       const pct=Math.round(it.c/max*100);
       const lastTxt=it.last?('上次 '+fmtDay(it.last.slice(0,10))):'';
-      return `<div class="usage-row ${it.b.delta>=0?'plus':'minus'} ${it.c?'':'zero'}" data-behavior="${esc(it.b.id)}"><span class="usage-fill" style="width:${pct}%"></span><span class="usage-name">${esc(it.b.name)}</span><span class="usage-last">${lastTxt}</span><span class="usage-count">${it.c?it.c+' 次':'未使用'}</span></div>`;
+      return `<button class="usage-row ${it.b.delta>=0?'plus':'minus'} ${it.c?'':'zero'}" data-behavior="${esc(it.b.id)}"><span class="usage-fill" style="width:${pct}%"></span><span class="usage-name">${esc(it.b.name)}</span><span class="usage-last">${lastTxt}</span><span class="usage-count">${it.c?it.c+' 次':'未使用'}</span><span class="usage-go">›</span></button>`;
     }).join('') || (q?`<div class="empty">没有匹配「${esc(behaviorSearch.trim())}」的记账项</div>`:'<div class="empty">暂无启用的记账项，请到设置中添加</div>');
+    grid.querySelectorAll('[data-behavior]').forEach(el=>{el.onclick=()=>openUsageDetail(el.dataset.behavior);});
     const sum=items.reduce((s,it)=>s+it.c,0);
     const unused=items.filter(it=>it.c===0).length;
     const rangeTxt=usageMetric==='recent'?`近 ${USAGE_RECENT_DAYS} 天`:'全部';
     $('usageSummary').textContent=`共 ${items.length} 项 · ${rangeTxt}合计 ${sum} 次`+(unused?` · ${unused} 项未使用`:'');
+  };
+  let detailBehaviorId=null;
+  let detailChildFilter=null;
+  const openUsageDetail=behaviorId=>{detailBehaviorId=behaviorId;detailChildFilter=null;openModal('usageDetail');};
+  const usageDetailBody=()=>{
+    const all=data.transactions.filter(t=>t.behaviorId===detailBehaviorId).sort((a,c)=>{const ka=a.date+' '+(a.time||''),kc=c.date+' '+(c.time||'');return kc<ka?-1:(kc>ka?1:0);});
+    if(!all.length)return '<div class="empty">这个记账项还没有使用记录</div>';
+    const txs=detailChildFilter?all.filter(t=>t.childId===detailChildFilter):all;
+    const sum=txs.reduce((s,t)=>s+t.delta,0);
+    const daySet=new Set(txs.map(t=>t.date));
+    const first=txs[txs.length-1].date,last=txs[0].date;
+    const span=Math.max(1,Math.round((new Date(last)-new Date(first))/86400000)+1);
+    const byChild={};
+    all.forEach(t=>{const k=t.childId;byChild[k]=byChild[k]||{n:0,sum:0};byChild[k].n++;byChild[k].sum+=t.delta;});
+    const arr=Object.entries(byChild).sort((a,c)=>c[1].n-a[1].n);
+    const maxN=arr[0][1].n;
+    const split=arr.map(([cid,v])=>`<button class="split-row ${detailChildFilter===cid?'active':''}" data-child="${esc(cid)}"><span class="split-name">${esc(childName(cid))}</span><span class="split-bar"><i style="width:${Math.max(5,Math.round(v.n/maxN*100))}%"></i></span><span class="split-n">${v.n} 次 · ${v.sum>0?'+':''}${v.sum} 块</span></button>`).join('');
+    const rows=txs.slice(0,100).map(t=>`<div class="detail-row"><span class="detail-date">${fmtDay(t.date)}</span><span class="detail-time">${esc(t.time||'')}</span><span class="detail-child">${esc(childName(t.childId))}</span><span class="detail-amount ${t.delta>=0?'positive':'negative'}">${t.delta>0?'+':''}${t.delta} 块</span></div>`).join('');
+    const filterNote=detailChildFilter?`<p class="form-hint">仅显示「${esc(childName(detailChildFilter))}」的 ${txs.length} 笔记录 · <button class="link-btn" id="detailReset">显示全部</button></p>`:'';
+    return `<div class="detail-tiles"><div class="stat"><label>使用次数</label><strong>${txs.length} 次</strong></div><div class="stat"><label>合计金额</label><strong class="${sum>=0?'positive':'negative'}">${sum>0?'+':''}${sum} 块</strong></div><div class="stat"><label>涉及天数</label><strong>${daySet.size} 天</strong></div><div class="stat"><label>最近一次</label><strong>${fmtDay(last)}</strong></div></div><p class="form-hint">首次 ${fmtDay(first)} · 跨度 ${span} 天 · 平均约 ${(span/txs.length).toFixed(1)} 天一次</p><h4>按小朋友（点击可筛选）</h4><div class="detail-split">${split}</div>${filterNote}<h4>使用记录（${txs.length} 笔）</h4><div class="detail-list">${rows}</div>${txs.length>100?'<p class="form-hint">仅显示最近 100 笔，全部记录可在「收支记录」中查看</p>':''}`;
+  };
+  const renderUsageDetail=()=>{
+    const b=data.behaviors.find(x=>x.id===detailBehaviorId);
+    $('modalTitle').textContent=(b?b.name:'记账项')+' · 使用详情';
+    $('modalBody').innerHTML=usageDetailBody();
+    $('modalBody').querySelectorAll('[data-child]').forEach(el=>el.onclick=()=>{detailChildFilter=detailChildFilter===el.dataset.child?null:el.dataset.child;renderUsageDetail();});
+    const rst=$('detailReset');
+    if(rst)rst.onclick=()=>{detailChildFilter=null;renderUsageDetail();};
   };
   const syncQuickUI=()=>{
     $('quickTitle').textContent=(usageView?'使用统计 · ':'快速记账 · ')+childName(activeChild);
@@ -550,6 +604,8 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
   const render = () => { renderChildren();renderQuick();renderLogs();renderCashout();if(activeTab==='trend')renderTrend();$('todayLabel').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'short'}); };
   const openModal = (mode) => {
     modalMode=mode;$('modalBackdrop').classList.add('show');
+    const ro=mode==='usageDetail';
+    $('saveModal').hidden=ro;$('cancelModal').textContent=ro?'关闭':'取消';
     if(mode==='child'){
       $('modalTitle').textContent='添加小朋友';
       $('modalBody').innerHTML='<p class="form-hint">为孩子设置一个容易辨认的名字。每个小朋友的记账记录独立保存。</p><div class="field"><label for="fName">小朋友名字（必填）</label><input id="fName" placeholder="例如：小明" maxlength="24" autocomplete="off" required></div><div class="field"><label for="fInitial">初始金额</label><input id="fInitial" type="number" value="0" min="-9999" max="9999" inputmode="numeric"><small class="form-hint">设置完成后，后续加钱扣钱会在此基础上累计。</small></div>';setTimeout(()=>{$('fName')?.focus();},30);
@@ -563,6 +619,9 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
     }
     if(mode==='editChild'){const c=data.children.find(x=>x.id===editingId);$('modalTitle').textContent='编辑小朋友';$('modalBody').innerHTML=`<p class="form-hint">修改名字不会影响该孩子已有的收支记录。</p><div class="field"><label for="fName">小朋友名字（必填）</label><input id="fName" maxlength="24" autocomplete="off" value="${esc(c?.name||'')}" required></div><div class="field"><label for="fInitial">初始金额</label><input id="fInitial" type="number" inputmode="numeric" value="${Number(c?.initial)||0}"><small class="form-hint">修改初始金额会影响当前总金额；历史记账记录不会被删除。</small></div>`;setTimeout(()=>{$('fName')?.focus();$('fName')?.select();},30);}
     if(mode==='editBehavior'){const b=data.behaviors.find(x=>x.id===editingId);$('modalTitle').textContent='修改记账项';$('modalBody').innerHTML=`<div class="field"><label>记账项名称</label><input id="fName" maxlength="40" value="${esc(b?.name||'')}"></div><div class="field"><label>金额变化（正数加钱，负数扣钱）</label><input id="fDelta" type="number" value="${Number(b?.delta)||1}"></div>`;}
+    if(mode==='usageDetail'){
+      renderUsageDetail();
+    }
     if(mode==='manageChildren'){$('modalTitle').textContent='管理小朋友';$('modalBody').innerHTML=data.children.map(c=>`<div class="child-manage-row"><div class="child-manage-name">${esc(c.name)}</div><button class="secondary-btn" data-edit-child="${esc(c.id)}">编辑</button><button class="secondary-btn" data-delete-child="${esc(c.id)}">删除</button></div>`).join('')+'<div class="field"><button class="secondary-btn" id="addChildFromManage">＋ 添加小朋友</button></div>';setTimeout(()=>{document.querySelectorAll('[data-edit-child]').forEach(b=>b.onclick=()=>{editingId=b.dataset.editChild;returnToManageChildren=true;openModal('editChild');});document.querySelectorAll('[data-delete-child]').forEach(b=>b.onclick=()=>{const id=b.dataset.deleteChild;if(data.children.length<2){toast('至少保留一位小朋友');return;}if(confirm('删除小朋友不会删除其历史记录，历史记录仍会保留原名字吗？当前版本将保留记录但关联到已删除的小朋友。确定删除？')){data.children=data.children.filter(c=>c.id!==id);if(activeChild===id)activeChild=data.children[0].id;save();openModal('manageChildren');render();}});const a=$('addChildFromManage');if(a)a.onclick=()=>{returnToManageChildren=true;openModal('child');};},0);}
     if(mode==='manageBehaviors'){$('modalTitle').textContent='管理记账项';$('modalBody').innerHTML='<p class="form-hint">「未用过」的项目可以放心删除，历史记录不会受影响。</p>'+data.behaviors.map((b,i)=>{const used=usageCount(b.id);return `<div class="custom-row"><input readonly value="${esc(b.name)}（${Math.abs(b.delta)}块）· ${used?used+' 次':'未用过'}"><button class="secondary-btn" data-move="${i}" data-step="-1" ${i===0?'disabled':''}>↑</button><button class="secondary-btn" data-move="${i}" data-step="1" ${i===data.behaviors.length-1?'disabled':''}>↓</button><button class="secondary-btn" data-edit-behavior="${esc(b.id)}">改</button><button class="secondary-btn" data-delete-behavior="${esc(b.id)}">删</button></div>`;}).join('')+'<div class="field"><button class="secondary-btn" id="addBehaviorFromManage">＋ 添加记账项</button></div>';setTimeout(()=>{document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.move),j=i+Number(b.dataset.step);if(j<0||j>=data.behaviors.length)return;[data.behaviors[i],data.behaviors[j]]=[data.behaviors[j],data.behaviors[i]];save();openModal('manageBehaviors');render();});document.querySelectorAll('[data-edit-behavior]').forEach(b=>b.onclick=()=>{editingId=b.dataset.editBehavior;openModal('editBehavior');});document.querySelectorAll('[data-delete-behavior]').forEach(b=>b.onclick=()=>{const id=b.dataset.deleteBehavior;if(confirm('删除这个记账项？已有历史记录会保留。')){data.behaviors=data.behaviors.filter(x=>x.id!==id);save();openModal('manageBehaviors');render();}});const a=$('addBehaviorFromManage');if(a)a.onclick=()=>openModal('behavior');},0);}
   };
