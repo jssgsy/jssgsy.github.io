@@ -124,8 +124,13 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
 .trend-svg { width:100%; height:auto; display:block; }
 .trend-svg text { pointer-events:none; }
 .trend-detail { text-align:center; font-size:12px; color:var(--muted); min-height:18px; margin-top:8px; }
+.behavior-hint { font-size:11px; color:var(--muted); text-align:center; margin-top:9px; line-height:1.5; }
+.behavior-tools { display:flex; gap:8px; margin-bottom:10px; }
+.behavior-tools input { flex:1; min-width:0; -webkit-appearance:none; appearance:none; }
+.behavior-tools button { white-space:nowrap; padding:10px 12px; font-size:12px; }
+.sort-btn { padding:8px 11px; font-size:12px; border-radius:10px; white-space:nowrap; }
 .behavior { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
-.behavior.dragging { z-index:5; position:fixed; pointer-events:none; box-shadow:0 16px 40px #1e293b33; transition:none; will-change:transform; transform:scale(1.03); margin:0; }
+.behavior.dragging { z-index:5; position:fixed; pointer-events:none; box-shadow:0 16px 40px #1e293b33; transition:none; will-change:transform; transform:scale(1.03); transform-origin:0 0; margin:0; }
 @media(max-width:400px) { .trend-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(min-width:620px) { .app{padding:34px 24px 50px}.behavior{min-height:112px;padding:13px 12px}.behavior .b-name{font-size:14px}.points{font-size:19px}.modal-backdrop{align-items:center}.modal{max-height:calc(100dvh - 48px)} }
 @media(max-width:360px) { .child-card .balance{font-size:27px}.card{padding:13px}.behaviors{gap:6px}.behavior{padding:9px 7px;min-height:94px;border-radius:12px}.behavior .b-name{font-size:12px}.behavior .b-icon{font-size:16px}.points{font-size:15px} }
@@ -156,8 +161,13 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
     </section>
 
     <section class="section card">
-      <div class="section-head"><h2 id="quickTitle">快速记账 · 小朋友 A</h2><small>点击记一笔 · 长按拖拽排序</small></div>
+      <div class="section-head"><h2 id="quickTitle">快速记账 · 小朋友 A</h2><button class="secondary-btn sort-btn" id="behaviorSortBtn">常用优先 ⇄</button></div>
+      <div class="behavior-tools">
+        <input type="search" id="behaviorSearch" placeholder="搜索记账项" aria-label="搜索记账项" autocomplete="off"/>
+        <button class="secondary-btn" id="behaviorMore" hidden>显示全部</button>
+      </div>
       <div class="behaviors" id="behaviors"></div>
+      <div class="behavior-hint" id="behaviorHint"></div>
       <div class="custom-row">
         <input id="customNote" placeholder="临时项目（可选）" aria-label="临时项目"/>
         <input id="customPoints" type="number" min="-100" max="100" step="1" value="1" style="max-width:88px" aria-label="金额变化"/>
@@ -261,14 +271,51 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
   };
   let dragJustEnded = 0;
   let dragActive = false;
+  const VISIBLE_BEHAVIORS=6;
+  let behaviorSort=(data.behaviorSort==='custom')?'custom':'usage';
+  let behaviorSearch='';
+  let behaviorExpanded=false;
+  const usageStats=()=>{
+    const total={},recent={},cutoff=shiftDay(new Date(),-30);
+    data.transactions.forEach(t=>{
+      const id=t.behaviorId;if(!id||id==='custom'||id==='cashout')return;
+      total[id]=(total[id]||0)+1;
+      if(t.date>=cutoff)recent[id]=(recent[id]||0)+1;
+    });
+    return {total,recent};
+  };
+  const usageCount=id=>data.transactions.filter(t=>t.behaviorId===id).length;
+  const behaviorDisplayOrder=(enabled,stats)=>{
+    const idx=new Map(enabled.map((b,i)=>[b.id,i]));
+    const list=[...enabled];
+    if(behaviorSort==='usage'){
+      list.sort((a,b)=>{
+        const ra=stats.recent[a.id]||0,rb=stats.recent[b.id]||0;if(ra!==rb)return rb-ra;
+        const ta=stats.total[a.id]||0,tb=stats.total[b.id]||0;if(ta!==tb)return tb-ta;
+        return idx.get(a.id)-idx.get(b.id);
+      });
+    }
+    return list;
+  };
   const renderBehaviors = () => {
     const enabled=data.behaviors.filter(b=>b.enabled);
+    const stats=usageStats();
+    const order=behaviorDisplayOrder(enabled,stats);
+    const q=behaviorSearch.trim().toLowerCase();
+    const matched=q?order.filter(b=>b.name.toLowerCase().includes(q)):order;
+    const visible=(q||behaviorExpanded)?matched:matched.slice(0,VISIBLE_BEHAVIORS);
     const grid=$('behaviors');
-    grid.innerHTML=enabled.map(b=>`<button class="behavior ${b.delta>=0?'plus':'minus'}" data-behavior="${esc(b.id)}"><span class="b-name">${esc(b.name)}</span><span class="b-bottom"><span class="points">${b.delta>0?'+':''}${b.delta} 块</span></span></button>`).join('') || '<div class="empty">暂无启用的记账项，请到设置中添加</div>';
+    grid.innerHTML=visible.map(b=>`<button class="behavior ${b.delta>=0?'plus':'minus'}" data-behavior="${esc(b.id)}"><span class="b-name">${esc(b.name)}</span><span class="b-bottom"><span class="points">${b.delta>0?'+':''}${b.delta} 块</span></span></button>`).join('')
+      || (q?`<div class="empty">没有匹配「${esc(behaviorSearch.trim())}」的记账项</div>`:'<div class="empty">暂无启用的记账项，请到设置中添加</div>');
     grid.querySelectorAll('[data-behavior]').forEach(btn=>{
       btn.onclick=()=>{if(Date.now()-dragJustEnded<400)return;const b=data.behaviors.find(x=>x.id===btn.dataset.behavior);if(!b)return;addTransaction(b.name,b.delta,b.id);};
       bindLongPress(btn,grid);
     });
+    const more=$('behaviorMore');
+    if(!q&&matched.length>VISIBLE_BEHAVIORS){more.hidden=false;more.textContent=behaviorExpanded?'收起':`展开 ${matched.length} 项`;}
+    else more.hidden=true;
+    $('behaviorSortBtn').textContent=behaviorSort==='usage'?'常用优先 ⇄':'自定义排序 ⇄';
+    $('behaviorHint').textContent=behaviorSort==='usage'?'按近 30 天使用次数排序 · 长按拖动可锁定为自定义顺序':'自定义顺序 · 长按项目可拖拽排序';
   };
   const bindLongPress=(btn,grid)=>{
     let timer=null,sx=0,sy=0;
@@ -292,15 +339,27 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
   const startDrag=(btn,grid,pointerId,sx,sy)=>{
     const rect=btn.getBoundingClientRect();
     const offX=sx-rect.left,offY=sy-rect.top;
+    // 固定尺寸与位置，避免 position:fixed 后缩成内容宽、并跳到网格左上角
+    btn.style.width=rect.width+'px';
+    btn.style.height=rect.height+'px';
+    btn.style.left=rect.left+'px';
+    btn.style.top=rect.top+'px';
     const move=e=>{
       if(e.pointerId!==pointerId)return;
       e.preventDefault();
       btn.style.left=(e.clientX-offX)+'px';
       btn.style.top=(e.clientY-offY)+'px';
-      const over=document.elementFromPoint(e.clientX,e.clientY)?.closest('.behavior');
-      if(over&&over!==btn&&over.parentElement===grid){
+      // 用几何位置判断落点，避开圆角处 elementFromPoint 漏判
+      const tiles=[...grid.querySelectorAll('.behavior')].filter(t=>t!==btn);
+      let over=null;
+      for(const t of tiles){
+        const r=t.getBoundingClientRect();
+        if(e.clientX>=r.left-4&&e.clientX<=r.right+4&&e.clientY>=r.top-4&&e.clientY<=r.bottom+4){over=t;break;}
+      }
+      if(over){
         const r=over.getBoundingClientRect();
-        const before=(e.clientY<r.top+r.height/2)||(Math.abs(e.clientY-(r.top+r.height/2))<r.height/2&&e.clientX<r.left+r.width/2);
+        const sameRow=Math.abs(e.clientY-(r.top+r.height/2))<r.height/2;
+        const before=sameRow?e.clientX<r.left+r.width/2:e.clientY<r.top+r.height/2;
         grid.insertBefore(btn,before?over:over.nextSibling);
       }
     };
@@ -311,18 +370,23 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
       document.removeEventListener('pointercancel',end);
       document.removeEventListener('touchmove',blockScroll);
       btn.classList.remove('dragging');
-      btn.style.left='';btn.style.top='';
+      btn.style.left='';btn.style.top='';btn.style.width='';btn.style.height='';
       dragActive=false;
       dragJustEnded=Date.now();
-      const order=[...grid.querySelectorAll('[data-behavior]')].map(x=>x.dataset.behavior);
+      const visibleOrder=[...grid.querySelectorAll('[data-behavior]')].map(x=>x.dataset.behavior);
       const enabled=data.behaviors.filter(b=>b.enabled);
-      if(order.length===enabled.length){
-        const byId=new Map(enabled.map(b=>[b.id,b]));
-        const newEnabled=order.map(id=>byId.get(id));
-        let k=0;
-        data.behaviors=data.behaviors.map(b=>b.enabled?newEnabled[k++]:b);
-        save();render();toast('顺序已保存');
-      }
+      const base=behaviorDisplayOrder(enabled,usageStats()).map(b=>b.id);
+      const set=new Set(visibleOrder);
+      const slots=[];base.forEach((id,i)=>{if(set.has(id))slots.push(i);});
+      const finalIds=[...base];
+      visibleOrder.forEach((id,i)=>{if(slots[i]!==undefined)finalIds[slots[i]]=id;});
+      const byId=new Map(data.behaviors.map(b=>[b.id,b]));
+      const used=new Set(finalIds);
+      let k=0;
+      data.behaviors=data.behaviors.map(b=>used.has(b.id)?byId.get(finalIds[k++]):b);
+      const locked=behaviorSort==='usage';
+      if(locked){behaviorSort='custom';data.behaviorSort='custom';}
+      save();render();toast(locked?'顺序已保存，已切换为自定义排序':'顺序已保存');
     };
     const blockScroll=ev=>{if(ev.cancelable)ev.preventDefault();};
     dragActive=true;
@@ -447,7 +511,7 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
     if(mode==='editChild'){const c=data.children.find(x=>x.id===editingId);$('modalTitle').textContent='编辑小朋友';$('modalBody').innerHTML=`<p class="form-hint">修改名字不会影响该孩子已有的收支记录。</p><div class="field"><label for="fName">小朋友名字（必填）</label><input id="fName" maxlength="24" autocomplete="off" value="${esc(c?.name||'')}" required></div><div class="field"><label for="fInitial">初始金额</label><input id="fInitial" type="number" inputmode="numeric" value="${Number(c?.initial)||0}"><small class="form-hint">修改初始金额会影响当前总金额；历史记账记录不会被删除。</small></div>`;setTimeout(()=>{$('fName')?.focus();$('fName')?.select();},30);}
     if(mode==='editBehavior'){const b=data.behaviors.find(x=>x.id===editingId);$('modalTitle').textContent='修改记账项';$('modalBody').innerHTML=`<div class="field"><label>记账项名称</label><input id="fName" maxlength="40" value="${esc(b?.name||'')}"></div><div class="field"><label>金额变化（正数加钱，负数扣钱）</label><input id="fDelta" type="number" value="${Number(b?.delta)||1}"></div>`;}
     if(mode==='manageChildren'){$('modalTitle').textContent='管理小朋友';$('modalBody').innerHTML=data.children.map(c=>`<div class="child-manage-row"><div class="child-manage-name">${esc(c.name)}</div><button class="secondary-btn" data-edit-child="${esc(c.id)}">编辑</button><button class="secondary-btn" data-delete-child="${esc(c.id)}">删除</button></div>`).join('')+'<div class="field"><button class="secondary-btn" id="addChildFromManage">＋ 添加小朋友</button></div>';setTimeout(()=>{document.querySelectorAll('[data-edit-child]').forEach(b=>b.onclick=()=>{editingId=b.dataset.editChild;returnToManageChildren=true;openModal('editChild');});document.querySelectorAll('[data-delete-child]').forEach(b=>b.onclick=()=>{const id=b.dataset.deleteChild;if(data.children.length<2){toast('至少保留一位小朋友');return;}if(confirm('删除小朋友不会删除其历史记录，历史记录仍会保留原名字吗？当前版本将保留记录但关联到已删除的小朋友。确定删除？')){data.children=data.children.filter(c=>c.id!==id);if(activeChild===id)activeChild=data.children[0].id;save();openModal('manageChildren');render();}});const a=$('addChildFromManage');if(a)a.onclick=()=>{returnToManageChildren=true;openModal('child');};},0);}
-    if(mode==='manageBehaviors'){$('modalTitle').textContent='管理记账项';$('modalBody').innerHTML=data.behaviors.map((b,i)=>`<div class="custom-row"><input readonly value="${esc(b.name)}（${Math.abs(b.delta)}块）"><button class="secondary-btn" data-move="${i}" data-step="-1" ${i===0?'disabled':''}>↑</button><button class="secondary-btn" data-move="${i}" data-step="1" ${i===data.behaviors.length-1?'disabled':''}>↓</button><button class="secondary-btn" data-edit-behavior="${esc(b.id)}">改</button><button class="secondary-btn" data-delete-behavior="${esc(b.id)}">删</button></div>`).join('')+'<div class="field"><button class="secondary-btn" id="addBehaviorFromManage">＋ 添加记账项</button></div>';setTimeout(()=>{document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.move),j=i+Number(b.dataset.step);if(j<0||j>=data.behaviors.length)return;[data.behaviors[i],data.behaviors[j]]=[data.behaviors[j],data.behaviors[i]];save();openModal('manageBehaviors');render();});document.querySelectorAll('[data-edit-behavior]').forEach(b=>b.onclick=()=>{editingId=b.dataset.editBehavior;openModal('editBehavior');});document.querySelectorAll('[data-delete-behavior]').forEach(b=>b.onclick=()=>{const id=b.dataset.deleteBehavior;if(confirm('删除这个记账项？已有历史记录会保留。')){data.behaviors=data.behaviors.filter(x=>x.id!==id);save();openModal('manageBehaviors');render();}});const a=$('addBehaviorFromManage');if(a)a.onclick=()=>openModal('behavior');},0);}
+    if(mode==='manageBehaviors'){$('modalTitle').textContent='管理记账项';$('modalBody').innerHTML='<p class="form-hint">「未用过」的项目可以放心删除，历史记录不会受影响。</p>'+data.behaviors.map((b,i)=>{const used=usageCount(b.id);return `<div class="custom-row"><input readonly value="${esc(b.name)}（${Math.abs(b.delta)}块）· ${used?used+' 次':'未用过'}"><button class="secondary-btn" data-move="${i}" data-step="-1" ${i===0?'disabled':''}>↑</button><button class="secondary-btn" data-move="${i}" data-step="1" ${i===data.behaviors.length-1?'disabled':''}>↓</button><button class="secondary-btn" data-edit-behavior="${esc(b.id)}">改</button><button class="secondary-btn" data-delete-behavior="${esc(b.id)}">删</button></div>`;}).join('')+'<div class="field"><button class="secondary-btn" id="addBehaviorFromManage">＋ 添加记账项</button></div>';setTimeout(()=>{document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.move),j=i+Number(b.dataset.step);if(j<0||j>=data.behaviors.length)return;[data.behaviors[i],data.behaviors[j]]=[data.behaviors[j],data.behaviors[i]];save();openModal('manageBehaviors');render();});document.querySelectorAll('[data-edit-behavior]').forEach(b=>b.onclick=()=>{editingId=b.dataset.editBehavior;openModal('editBehavior');});document.querySelectorAll('[data-delete-behavior]').forEach(b=>b.onclick=()=>{const id=b.dataset.deleteBehavior;if(confirm('删除这个记账项？已有历史记录会保留。')){data.behaviors=data.behaviors.filter(x=>x.id!==id);save();openModal('manageBehaviors');render();}});const a=$('addBehaviorFromManage');if(a)a.onclick=()=>openModal('behavior');},0);}
   };
   const closeModal=()=>{$('modalBackdrop').classList.remove('show');modalMode=null;};
   const csvCell=v=>{const s=String(v??'');return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
@@ -513,11 +577,12 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
   };
   const exportData=()=>{const headers=['type','id','name','initial','delta','enabled','childId','behaviorId','date','time'];const rows=[headers,...data.children.map(c=>['child',c.id,c.name,c.initial,'','','','','','']),...data.behaviors.map(b=>['behavior',b.id,b.name,'',b.delta,b.enabled===false?'false':'true','','','','']),...data.transactions.map(t=>['transaction',t.id,t.name,'',t.delta,'',t.childId,t.behaviorId||'',t.date,t.time])];const csv='\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='家庭小账本备份-'+today()+'.csv';a.click();URL.revokeObjectURL(url);toast('已导出 CSV');};
   const parseCSV=text=>{const rows=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c;}else if(c==='"')quoted=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell.replace(/\r$/,''));if(row.some(v=>v!==''))rows.push(row);row=[];cell='';}else cell+=c;}row.push(cell.replace(/\r$/,''));if(row.some(v=>v!==''))rows.push(row);return rows;};
-  const importData=async e=>{const file=e.target.files?.[0];if(!file)return;try{const rows=parseCSV((await file.text()).replace(/^\ufeff/,''));if(rows.length<2||rows[0][0]!=='type')throw new Error('CSV 表头不正确');const ix=Object.fromEntries(rows[0].map((h,i)=>[h,i]));const val=(r,k)=>r[ix[k]]??'';const parsed={children:[],behaviors:[],transactions:[]};for(const r of rows.slice(1)){const type=val(r,'type'),id=val(r,'id'),name=val(r,'name');if(type==='child')parsed.children.push({id,name,initial:Number(val(r,'initial')||0)});else if(type==='behavior')parsed.behaviors.push({id,name,delta:Number(val(r,'delta')),enabled:val(r,'enabled')!=='false'});else if(type==='transaction')parsed.transactions.push({id,name,delta:Number(val(r,'delta')),childId:val(r,'childId'),behaviorId:val(r,'behaviorId')||'custom',date:val(r,'date'),time:val(r,'time')});}if(!parsed.children.length||!parsed.children.every(c=>c.id&&c.name&&Number.isFinite(c.initial))||!parsed.behaviors.every(b=>b.id&&b.name&&Number.isFinite(b.delta))||!parsed.transactions.every(t=>t.id&&t.childId&&t.name&&Number.isFinite(t.delta)&&t.date&&t.time))throw new Error('CSV 数据不完整');if(!confirm(`将导入 ${parsed.children.length} 位孩子、${parsed.behaviors.length} 条记账项、${parsed.transactions.length} 条流水，并替换本设备现有数据。建议先备份。继续吗？`))return;data=parsed;activeChild=data.children[0]?.id;filterDate='';$('dateFilter').value='';save();closeModal();render();toast('CSV 导入成功');}catch(err){alert('导入失败：请使用本应用导出的 CSV 文件，检查表头和必填字段。');}finally{e.target.value='';}};
+  const importData=async e=>{const file=e.target.files?.[0];if(!file)return;try{const rows=parseCSV((await file.text()).replace(/^\ufeff/,''));if(rows.length<2||rows[0][0]!=='type')throw new Error('CSV 表头不正确');const ix=Object.fromEntries(rows[0].map((h,i)=>[h,i]));const val=(r,k)=>r[ix[k]]??'';const parsed={children:[],behaviors:[],transactions:[]};for(const r of rows.slice(1)){const type=val(r,'type'),id=val(r,'id'),name=val(r,'name');if(type==='child')parsed.children.push({id,name,initial:Number(val(r,'initial')||0)});else if(type==='behavior')parsed.behaviors.push({id,name,delta:Number(val(r,'delta')),enabled:val(r,'enabled')!=='false'});else if(type==='transaction')parsed.transactions.push({id,name,delta:Number(val(r,'delta')),childId:val(r,'childId'),behaviorId:val(r,'behaviorId')||'custom',date:val(r,'date'),time:val(r,'time')});}if(!parsed.children.length||!parsed.children.every(c=>c.id&&c.name&&Number.isFinite(c.initial))||!parsed.behaviors.every(b=>b.id&&b.name&&Number.isFinite(b.delta))||!parsed.transactions.every(t=>t.id&&t.childId&&t.name&&Number.isFinite(t.delta)&&t.date&&t.time))throw new Error('CSV 数据不完整');if(!confirm(`将导入 ${parsed.children.length} 位孩子、${parsed.behaviors.length} 条记账项、${parsed.transactions.length} 条流水，并替换本设备现有数据。建议先备份。继续吗？`))return;const keepSort=data.behaviorSort;data=parsed;data.behaviorSort=keepSort||'usage';behaviorSort=data.behaviorSort;activeChild=data.children[0]?.id;filterDate='';$('dateFilter').value='';save();closeModal();render();toast('CSV 导入成功');}catch(err){alert('导入失败：请使用本应用导出的 CSV 文件，检查表头和必填字段。');}finally{e.target.value='';}};
   $('settingsBtn').onclick=()=>openModal('settings');
   $('cancelModal').onclick=()=>{returnToManageChildren=false;closeModal();};
   $('modalBackdrop').onclick=e=>{if(e.target===$('modalBackdrop'))closeModal();};
   $('saveModal').onclick=()=>{
+    let addedName='';
     if(modalMode==='child'){
       const name=$('fName').value.trim();const initialPoints=Number($('fInitial').value);
       if(!name){toast('请填写小朋友名字');$('fName')?.focus();return;}
@@ -532,10 +597,14 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
       const name=$('fName').value.trim();const delta=Number($('fDelta').value);
       if(!name||!Number.isFinite(delta)||delta===0){toast('请填写名称和非零金额');return;}
       data.behaviors.push({id:'b'+Date.now(),name,delta:Math.trunc(delta),enabled:true});
+      addedName=name;
     } else { closeModal();return; }
-    save();closeModal();render();if(returnToManageChildren&&(modalMode===null)){returnToManageChildren=false;openModal('manageChildren');}toast('已保存');
+    save();closeModal();render();if(returnToManageChildren&&(modalMode===null)){returnToManageChildren=false;openModal('manageChildren');}toast(addedName?`已添加「${addedName}」，展开或搜索可看到`:'已保存');
   };
   $('customAddBtn').onclick=()=>{const name=$('customNote').value.trim()||'临时记账';const delta=Number($('customPoints').value);if(!Number.isFinite(delta)||delta===0){toast('请输入非零金额');return;}addTransaction(name,Math.trunc(delta));$('customNote').value='';};
+  $('behaviorSortBtn').onclick=()=>{behaviorSort=behaviorSort==='usage'?'custom':'usage';data.behaviorSort=behaviorSort;save();renderBehaviors();toast(behaviorSort==='usage'?'已切换为常用优先排序':'已切换为自定义排序，长按项目可拖动');};
+  $('behaviorSearch').addEventListener('input',e=>{behaviorSearch=e.target.value;renderBehaviors();});
+  $('behaviorMore').onclick=()=>{behaviorExpanded=!behaviorExpanded;renderBehaviors();};
   $('cashoutBtn').onclick=cashout;
   $('dateFilter').onchange=e=>{filterDate=e.target.value;renderLogs();};
   $('clearFilter').onclick=()=>{$('dateFilter').value='';filterDate='';renderLogs();};
@@ -573,6 +642,7 @@ input,select { border:1px solid var(--border); border-radius:11px; background:va
   $('trendEnd').onchange=applyCustomRange;
   let resizeTimer=null;
   window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(activeTab==='trend')renderTrend();},200);});
+  data.behaviorSort=behaviorSort;
   save();render();
 })();
 </script>
